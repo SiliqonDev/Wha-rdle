@@ -1,0 +1,2 @@
+nextcord==3.0.1
+pillow==12.1.1
