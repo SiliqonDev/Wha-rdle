@@ -5,6 +5,7 @@
 /modules/__pychache__/*
 /modules/cogs/__pycache__/*
 *.zip
+*.rar
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
