@@ -11,8 +11,8 @@ intents.members = True
 bot = commands.Bot(command_prefix="w?", intents=intents)
 
 ## CONSTANTS
-guild_ids = shared.guild_ids 
-admin_ids = shared.admin_ids 
+admin_ids_string = os.getenv("ADMIN_USER_IDS")
+admin_ids = [] if admin_ids_string == None else [int(id) for id in admin_ids_string.strip().split(',')]
 name = shared.name
 
 # game cache
@@ -40,25 +40,28 @@ async def gameCleanupLoop():
 async def on_ready():
     fileHandler.initDataFile()
     data = fileHandler.getGameData()
-    if data['gameId'] < 0: gameHandler.createNewGame() # start new game is none exist
+    if data['gameId'] < 0: gameHandler.createNewGame() # start new game if first time running
     gameCleanupLoop.start()
     
-    print(f"Started bot as {bot.user} (ID: {bot.user.id})")
+    print(f"Started bot as {bot.user}")
 
 ###
 ### COMMANDS
 ###
 
-@bot.slash_command(guild_ids=guild_ids, description=f"Play a game of {name}")
+@bot.slash_command(description=f"Play a game of {name}")
 async def play(interaction : Interaction):
+    if interaction.user == None: return
+    userId = interaction.user.id
+
     # leftover game from earlier?
-    data = fileHandler.getLastGameDataOf(interaction.user.id)
-    if (interaction.user.id not in active_games.keys()) and (not data["completed"]) and (data["id"] == gameHandler.currentGameData["gameId"]):
+    data = fileHandler.getLastGameDataOf(userId)
+    if (userId not in active_games.keys()) and (not data["completed"]) and (data["id"] == gameHandler.currentGameData["gameId"]):
         await interaction.response.send_message("You already have an ongoing game! Use /guess", ephemeral=True, delete_after=10)
         return
 
     # eligibility check to start new game right now
-    eligible = canUserPlayGame(interaction.user.id)
+    eligible = canUserPlayGame(userId)
     if not eligible:
         await interaction.response.send_message("You cannot start a new game right now!", ephemeral=True, delete_after=10)
         return
@@ -71,25 +74,28 @@ async def play(interaction : Interaction):
     await instance.initGame()
     print(f"{interaction.user} started playing")
 
-    active_games[interaction.user.id] = instance
+    active_games[userId] = instance
 
-@bot.slash_command(guild_ids=guild_ids, description=f"Make a guess in your game of {name}")
+@bot.slash_command(description=f"Make a guess in your game of {name}")
 async def guess(interaction : Interaction, guess : str = SlashOption(description="Your guess", required=True)):
+    if interaction.user == None: return
+    userId = interaction.user.id
+
     # continuing a game from earlier?
-    data = fileHandler.getLastGameDataOf(interaction.user.id)
-    if (interaction.user.id not in active_games.keys()) and (not data["completed"]) and (data["id"] == gameHandler.currentGameData["gameId"]):
+    data = fileHandler.getLastGameDataOf(userId)
+    if (userId not in active_games.keys()) and (not data["completed"]) and (data["id"] == gameHandler.currentGameData["gameId"]):
         # build new game instance
         instance = gameHandler.GameInstance(bot, interaction, silentStart=True)
         await instance.initGame()
-        active_games[interaction.user.id] = instance
+        active_games[userId] = instance
 
     # not continuing past game and no current game is being played
-    if interaction.user.id not in active_games.keys():
+    if userId not in active_games.keys():
         await interaction.response.send_message("You do not have an ongoing game! Try using /play", ephemeral=True, delete_after=10)
         return
      
     # current game being played but is completed
-    instance : gameHandler.GameInstance = active_games[interaction.user.id]
+    instance : gameHandler.GameInstance = active_games[userId]
     if instance.completed:
         await interaction.response.send_message("You already completed the current game!", ephemeral=True, delete_after=10)
         return
@@ -97,12 +103,13 @@ async def guess(interaction : Interaction, guess : str = SlashOption(description
     # game currently running and is not completed
     await instance.validateGuess(interaction, guess)
 
-@bot.slash_command(guild_ids=guild_ids, description="View your last game's progress.")
+@bot.slash_command(description="View your last game's progress.")
 async def view(interaction : Interaction):
+    if interaction.user == None: return
     userId = interaction.user.id
+
     data = fileHandler.getLastGameDataOf(userId)
     gameId = data["id"]
-    
     if gameId < 0:
         await interaction.response.send_message("You dont have any past games!", ephemeral=True, delete_after=10)
         return
@@ -112,14 +119,17 @@ async def view(interaction : Interaction):
         await interaction.response.send_message(embed=embed, file=File(f"{shared.path_to_bot}/temp/images/{userId}.png", filename=f"{userId}.png"), ephemeral=True)
     else:
         await interaction.response.send_message(embed=embed, ephemeral=True)
-@bot.slash_command(guild_ids=guild_ids, description="View your last game's progress.")
+@bot.slash_command(description="View your last game's progress.")
 async def show(interaction: Interaction):
     await view(interaction)
 
 ## create new game
-@bot.slash_command(guild_ids=guild_ids, description=f"Start a new {name}")
+@bot.slash_command(description=f"Start a new {name}")
 async def new(interaction: Interaction):
-    if interaction.user.id not in admin_ids:
+    if interaction.user == None: return
+    userId = interaction.user.id
+
+    if userId not in admin_ids:
         await interaction.response.send_message("Nuh uh.", ephemeral=True, delete_after=10)
         return
     await cleanupGameData()
@@ -148,7 +158,7 @@ async def new(interaction: Interaction):
     await interaction.send("A new game has been started.", ephemeral=True, delete_after=5)
     await interaction.channel.send(content=text, file=File(f"{shared.path_to_bot}/temp/images/combined-result-new.png", "combined-results.png"))
 
-@bot.slash_command(guild_ids=guild_ids, description="Show everyone's progress on the current game")
+@bot.slash_command(description="Show everyone's progress on the current game")
 async def showall(interaction: Interaction):
     resultsImage = await displaysHandler.getCombinedResultDisplayImage(bot)
     if not resultsImage: # no current results to show
@@ -159,7 +169,7 @@ async def showall(interaction: Interaction):
     await interaction.response.send_message(file=File(f"{shared.path_to_bot}/temp/images/combined-result-showall.png", "combined-results.png"))
     return
 
-@bot.slash_command(guild_ids=guild_ids, description="View the stats leaderboard")
+@bot.slash_command(description="View the stats leaderboard")
 async def stats(interaction: Interaction):
     embeds = displaysHandler.getLeaderboardEmbeds(bot, interaction.user.id)
     await interaction.send(embed=embeds[0])
@@ -194,16 +204,31 @@ def canUserPlayGame(userId):
     latestGameId = fileHandler.getGameData()["gameId"]
     # some bug??
     if playerData["id"] > latestGameId:
-        return False
+        playerData["id"] = latestGameId
+        return True
     # current game also completed
     if playerData["id"] == latestGameId and playerData["completed"]:
         return False
     # all good
     return True
 
-# start the bot
+async def load_cogs():
+    for filename in os.listdir(f"{shared.path_to_bot}/modules/cogs"):
+        if filename.endswith(".py"):
+            # load cog using module path
+            bot.load_extension(f"modules.cogs.{filename[:-3]}")
+            print(f"Loaded cog: {filename[:-3]}")
+
+# check token and start bot
 token = os.getenv("TOKEN")
 if not token:
     print("TOKEN NOT FOUND OR INVALID TOKEN DETECTED")
     exit()
-bot.run(token)
+
+async def main():
+    await load_cogs()
+    await bot.start(token)
+
+if __name__ == "__main__":
+    import asyncio
+    asyncio.run(main())

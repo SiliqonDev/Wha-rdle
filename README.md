@@ -2,20 +2,26 @@
 Basically a wordle clone but in a discord bot, called Wha?-rdle
 
 Not the best, not the worst, but it works
-Requires prior knowledge of discord bots to operate
+
+<b>Requires prior knowledge of discord bots to operate</b>
 
 ## How to use:
-Go to `shared.py` and fill out any empty fields
-Create a `.env` file in the bot directory and put your token in it like `TOKEN="my token"`
+Go to `shared.py` and change fields as necessary
+Create a `.env` file in the bot directory with the following format
+```env
+TOKEN = "mytoken"
+ADMIN_USER_IDS = "1234, 5678, 10000111" # all ids must be seperated by commmas
+```
 Add the bot to your server, and run `main.py`
-- Requires message content and members intent
 
-### Commands:
-- /play : start playing the current available game of wordle
-- /guess : make a guess in your current game of wordle
-- /new : starts a new game of wordle for everyone (user must be in ADMIN_IDS)
+<b>(Bot requires message content and members intents)</b>
+
+## Commands:
+- /play : start playing the current active game
+- /guess : make a guess in the current active game
+- /new : starts a new game for everyone (user must be admin)
 - /show or /view : view your progress in the last game that you played
-- /showall : view everyones progress in the current active wordle
+- /showall : view everyones progress in the current active game
 - /stats : view everyones game stats
 
 ## Note:

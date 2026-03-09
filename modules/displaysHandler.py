@@ -27,10 +27,10 @@ def getGridColorsAgainstAnswer(guess : str, answer : str):
         if l not in count.keys():
             res.append(gridColors["NOT"])
             continue
-        if count[l] <= 0:
-            res.append(gridColors["NOT"])
-        elif guess[i] == answer[i]:
+        if guess[i] == answer[i]:
             res.append(gridColors["YES"])
+        elif count[l] <= 0:
+            res.append(gridColors["NOT"])
             count[l] -= 1
         else:
             res.append(gridColors["MAYBE"])
@@ -115,6 +115,7 @@ async def getCombinedResultDisplayImage(bot : commands.Bot, masked=True):
 
     players = len(playerResultImageData)
     if players == 0: return None # no data to show
+    
     imageResMulti = resFactor*100
     resultsImage = Image.new('RGB', (int( (imageResMulti*players*5) + (players+1)*1*imageResMulti + imageResMulti*2 ), int( imageResMulti*11 )), color=(18, 18, 19)) # accounts for extra space needed for padding and player images
 

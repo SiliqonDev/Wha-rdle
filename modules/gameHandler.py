@@ -1,6 +1,6 @@
 import random, string
 from nextcord.ext import commands
-from nextcord import Interaction, Embed, Colour, File
+from nextcord import Interaction, Embed, Colour, File, TextChannel
 from modules import fileHandler, shared, displaysHandler
 from PIL import Image
 
@@ -190,3 +190,44 @@ class GameInstance():
         embed.add_field(name="Game Terminated", value=f"This game has been **terminated!**\nReason: {reason}")
         
         await self.interaction.send(embed=embed, ephemeral=True, delete_after=30)
+
+async def endCurrentGame(bot : commands.Bot, interaction : Interaction, startNew=True, announce=True):
+    channel = bot.get_channel(shared.alerts_channel_id)
+    if interaction != None and interaction.channel != None:
+        channel = interaction.channel
+    elif channel == None or not isinstance(channel, TextChannel):
+        print("Alerts channel not found! Invalid ID!")
+        announce = False
+
+    # get last game results
+    resultsImage = await displaysHandler.getCombinedResultDisplayImage(bot)
+    # init new game
+    if startNew: createNewGame()
+
+    embed = Embed(title="GAME ENDED!", description=f"The current game of {shared.name} has ended!", color=Colour.red())
+    embed.set_footer(text=f"{shared.name} #{currentGameData["gameId"]} (ENDED)")
+
+    if not resultsImage: # no past results to show
+        embed.add_field(name="No available results.", value="", inline=False)
+        if announce: channel.send(embed=embed)
+        return
+    resultsImage.save(f"{shared.path_to_bot}/temp/images/combined-result-new.png")
+    
+    if not announce: return
+    # create server alert for new game and stats for last game
+    lines = []
+    gameData = fileHandler.getLastGameData()
+    for p,data in gameData.items():
+        if data['id'] != currentGameData['gameId']: continue
+        text = f"<@{p}>: " + ("Won" if data['won'] else "Lost") + f" in {len(data['guesses'])} moves.\n"
+        lines.append(text)
+    embed.add_field(name="Game Results", value=lines,inline=False)
+
+    if startNew:
+        embed.add_field(name="",value="**A new game has been started**", inline=False)
+    
+    # send alert
+    if interaction: await interaction.send("Command executed.", ephemeral=True, delete_after=5)
+    await channel.send(embed=embed, file=File(f"{shared.path_to_bot}/temp/images/combined-result-new.png", "combined-results.png"))
+
+    
