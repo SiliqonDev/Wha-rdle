@@ -204,27 +204,31 @@ async def endCurrentGame(bot : commands.Bot, interaction : Interaction, startNew
     # init new game
     if startNew: createNewGame()
 
-    embed = Embed(title="GAME ENDED!", description=f"The current game of {shared.name} has ended!", color=Colour.red())
-    embed.set_footer(text=f"{shared.name} #{currentGameData["gameId"]} (ENDED)")
+    embed = Embed(title="GAME ENDED!", description=f"The current game of {shared.name} has ended!\n", color=Colour.red())
+    embed.set_footer(text=f"{shared.name} #{currentGameData["gameId"]-1}")
 
     if not resultsImage: # no past results to show
         embed.add_field(name="No available results.", value="", inline=False)
-        if announce: channel.send(embed=embed)
+        if startNew:
+            embed.add_field(name="",value="*A new game has been started*", inline=False)
+        if announce: await channel.send(embed=embed)
+        if interaction: await interaction.send("Command executed.", ephemeral=True, delete_after=5)
         return
     resultsImage.save(f"{shared.path_to_bot}/temp/images/combined-result-new.png")
     
     if not announce: return
     # create server alert for new game and stats for last game
-    lines = []
+    lines = "\n"
     gameData = fileHandler.getLastGameData()
     for p,data in gameData.items():
-        if data['id'] != currentGameData['gameId']: continue
+        if data['id'] != currentGameData['gameId']-1: continue
         text = f"<@{p}>: " + ("Won" if data['won'] else "Lost") + f" in {len(data['guesses'])} moves.\n"
-        lines.append(text)
+        lines += text
+    lines+="\n"
     embed.add_field(name="Game Results", value=lines,inline=False)
 
     if startNew:
-        embed.add_field(name="",value="**A new game has been started**", inline=False)
+        embed.add_field(name="",value="*A new game has been started*", inline=False)
     
     # send alert
     if interaction: await interaction.send("Command executed.", ephemeral=True, delete_after=5)

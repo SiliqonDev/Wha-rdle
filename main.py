@@ -133,30 +133,7 @@ async def new(interaction: Interaction):
         await interaction.response.send_message("Nuh uh.", ephemeral=True, delete_after=10)
         return
     await cleanupGameData()
-
-    # save last game result
-    resultsImage = await displaysHandler.getCombinedResultDisplayImage(bot)
-    if not resultsImage: # no past results to show
-        await interaction.channel.send(content="**A new game has started!**")
-        return
-    # show past results
-    resultsImage.save(f"{shared.path_to_bot}/temp/images/combined-result-new.png")
-
-    # create server alert for new game and stats for last game
-    text = "__LAST GAME RESULTS__\n"
-    currentGameData = gameHandler.currentGameData
-    gameData = fileHandler.getLastGameData()
-    for p,data in gameData.items():
-        if data['id'] != currentGameData['gameId']: continue
-        text += f"<@{p}>: " + ("Won" if data['won'] else "Lost") + f" in {len(data['guesses'])} moves.\n"
-    text += "\n**A new game has started!**"
-
-    # init new game
-    gameHandler.createNewGame()
-    
-    # send
-    await interaction.send("A new game has been started.", ephemeral=True, delete_after=5)
-    await interaction.channel.send(content=text, file=File(f"{shared.path_to_bot}/temp/images/combined-result-new.png", "combined-results.png"))
+    await gameHandler.endCurrentGame(bot, interaction)
 
 @bot.slash_command(description="Show everyone's progress on the current game")
 async def showall(interaction: Interaction):
