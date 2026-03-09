@@ -4,7 +4,7 @@ from nextcord import Interaction, Embed, Colour, File, TextChannel
 from modules import fileHandler, shared, displaysHandler
 from PIL import Image
 
-fileHandler.initDataFile()
+fileHandler.initFiles()
 
 # intialize cache
 allowed_guesses, possible_answers = fileHandler.getWordList()

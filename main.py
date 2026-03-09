@@ -3,6 +3,7 @@ from modules import fileHandler, gameHandler, shared, displaysHandler
 from nextcord import Interaction, File, SlashOption
 from nextcord.ext import commands, tasks
 from dotenv import load_dotenv
+from pathlib import Path
 
 load_dotenv()
 intents = nextcord.Intents.default()
@@ -38,7 +39,6 @@ async def gameCleanupLoop():
 
 @bot.event
 async def on_ready():
-    fileHandler.initDataFile()
     data = fileHandler.getGameData()
     if data['gameId'] < 0: gameHandler.createNewGame() # start new game if first time running
     gameCleanupLoop.start()
@@ -190,6 +190,7 @@ def canUserPlayGame(userId):
     return True
 
 async def load_cogs():
+    Path(f"{shared.path_to_bot}/modules/cogs").mkdir(parents=True, exist_ok=True)
     for filename in os.listdir(f"{shared.path_to_bot}/modules/cogs"):
         if filename.endswith(".py"):
             # load cog using module path

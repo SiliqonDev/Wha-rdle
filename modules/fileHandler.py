@@ -1,5 +1,6 @@
 import os, json
 from modules import shared
+from pathlib import Path
 
 startingData = {"currentGameData": {"gameId": -1, "answer": ""}, "stats": {}, "lastGameData": {}}
 
@@ -16,7 +17,9 @@ def getWordList():
     
     return allowed_guesses, possible_answers
 
-def initDataFile():
+def initFiles():
+    Path(f"{shared.path_to_bot}/temp/images").mkdir(parents=True, exist_ok=True)
+
     if os.path.exists(f"{shared.path_to_bot}/data.json"): return
     # make new file
     with open(f"{shared.path_to_bot}/data.json", 'w') as f:
