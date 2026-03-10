@@ -1,5 +1,5 @@
 import os, json
-from modules import shared
+from utils import shared_functions
 from pathlib import Path
 
 startingData = {"currentGameData": {"gameId": -1, "answer": ""}, "stats": {}, "lastGameData": {}}
@@ -8,25 +8,25 @@ def getWordList():
     allowed_guesses = []
     possible_answers = []
 
-    with open(f"{shared.path_to_bot}/files/allowed-guesses.txt", 'r') as f1:
+    with open(f"{shared_functions.path_to_bot}/files/allowed-guesses.txt", 'r') as f1:
         for line in f1:
             allowed_guesses.append(line.strip())
-    with open(f"{shared.path_to_bot}/files/possible-answers.txt", 'r') as f2:
+    with open(f"{shared_functions.path_to_bot}/files/possible-answers.txt", 'r') as f2:
         for line in f2:
             possible_answers.append(line.strip())
     
     return allowed_guesses, possible_answers
 
 def initFiles():
-    Path(f"{shared.path_to_bot}/temp/images").mkdir(parents=True, exist_ok=True)
+    Path(f"{shared_functions.path_to_bot}/temp/images").mkdir(parents=True, exist_ok=True)
 
-    if os.path.exists(f"{shared.path_to_bot}/data.json"): return
+    if os.path.exists(f"{shared_functions.path_to_bot}/data.json"): return
     # make new file
-    with open(f"{shared.path_to_bot}/data.json", 'w') as f:
+    with open(f"{shared_functions.path_to_bot}/data.json", 'w') as f:
         json.dump(startingData, f)
     
 def getAllData():
-    with open(f"{shared.path_to_bot}/data.json",'r') as f:
+    with open(f"{shared_functions.path_to_bot}/data.json",'r') as f:
         return(json.load(f))
 
 ###
@@ -35,7 +35,7 @@ def getGameData():
 def setGameData(newData):
     current = getAllData()
     current["currentGameData"] = newData
-    with open(f"{shared.path_to_bot}/data.json", 'w') as f:
+    with open(f"{shared_functions.path_to_bot}/data.json", 'w') as f:
         json.dump(current, f)
 
 ###
@@ -56,7 +56,7 @@ def getLastGameDataOf(userId):
 def setLastGameDataFor(userId, data):
     current = getAllData()
     current["lastGameData"][f"{userId}"] = data
-    with open(f"{shared.path_to_bot}/data.json", "w") as f:
+    with open(f"{shared_functions.path_to_bot}/data.json", "w") as f:
         json.dump(current, f)
 
 ###
@@ -75,7 +75,7 @@ def getPlayerStatsOf(userId):
 def setPlayerStatsFor(userId, stats):
     current = getAllData()
     current["stats"][f"{userId}"] = stats
-    with open(f"{shared.path_to_bot}/data.json", "w") as f:
+    with open(f"{shared_functions.path_to_bot}/data.json", "w") as f:
         json.dump(current, f)
 def incrementPlayerStats(userId, increments : dict):
     stats = getPlayerStatsOf(userId)

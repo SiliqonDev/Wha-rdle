@@ -1,9 +1,12 @@
 # for sharing the bot code
-/data.json
-/.env
-/temp/images/*
-/modules/__pychache__/*
-/modules/cogs/__pycache__/*
+/temp
+/modules/__pycache__
+/utils/__pycache__
+/cogs/__pycache__
+/data/__pycache
+/data/*.db
+logs/
+*.env
 *.zip
 *.rar
 

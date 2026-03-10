@@ -1,16 +1,38 @@
-import nextcord, os
-from modules import fileHandler, gameHandler, shared, displaysHandler
+import nextcord, json, inspect, os
+from os.path import isfile, join
+from modules import fileHandler, gameHandler, displaysHandler
 from nextcord import Interaction, File, SlashOption
 from nextcord.ext import commands, tasks
 from dotenv import load_dotenv
 from pathlib import Path
+from datetime import datetime
+from utils.types import BotConfig
 
-load_dotenv()
-intents = nextcord.Intents.default()
-intents.message_content = True
-intents.members = True
-bot = commands.Bot(command_prefix="w?", intents=intents)
+bot = commands.Bot(command_prefix="w?", intents=nextcord.Intents.all())
 
+# get directory that main.py is in
+currentFrame = inspect.currentframe()
+if currentFrame is None:
+    print("CRITICAL: Could not find current working directory!")
+    exit()
+filename = inspect.getframeinfo(currentFrame).filename
+cwd = os.path.dirname(os.path.abspath(filename)) # current working directory
+
+# load bot config
+config = None
+try:
+    with open(f"{cwd}/config.json") as f:
+        config = BotConfig(json.load(f))
+    if not config:
+        raise(Exception)
+except Exception as e:
+    print("CRITICAL: Could not load config file!",e)
+    exit()
+
+config.set("cwd", cwd)
+config.set("log_file_path", f"{cwd}/{str(datetime.now())}.log") # set seperate log file name each time
+
+"""
 ## CONSTANTS
 admin_ids_string = os.getenv("ADMIN_USER_IDS")
 admin_ids = [] if admin_ids_string == None else [int(id) for id in admin_ids_string.strip().split(',')]
@@ -34,8 +56,8 @@ async def gameCleanupLoop():
             toclean.append(user)
             print(f"Cleaned up game from {user}")
     
-    for u in toclean:
-        del active_games[u]
+    for user in toclean:
+        del active_games[user]
 
 @bot.event
 async def on_ready():
@@ -66,6 +88,7 @@ async def play(interaction : Interaction):
         await interaction.response.send_message("You cannot start a new game right now!", ephemeral=True, delete_after=10)
         return
 
+    await interaction.response.defer() # prevent webhook token expiration during game
     # alerts
     await interaction.send(f"Starting a game of {name}",ephemeral=True, delete_after=5)
 
@@ -85,6 +108,7 @@ async def guess(interaction : Interaction, guess : str = SlashOption(description
     data = fileHandler.getLastGameDataOf(userId)
     if (userId not in active_games.keys()) and (not data["completed"]) and (data["id"] == gameHandler.currentGameData["gameId"]):
         # build new game instance
+        await interaction.response.defer() # prevent webhook token expiration during game
         instance = gameHandler.GameInstance(bot, interaction, silentStart=True)
         await instance.initGame()
         active_games[userId] = instance
@@ -188,25 +212,34 @@ def canUserPlayGame(userId):
         return False
     # all good
     return True
+"""
 
+cogs_path = f'{cwd}/cogs'
 async def load_cogs():
-    Path(f"{shared.path_to_bot}/modules/cogs").mkdir(parents=True, exist_ok=True)
-    for filename in os.listdir(f"{shared.path_to_bot}/modules/cogs"):
-        if filename.endswith(".py"):
-            # load cog using module path
-            bot.load_extension(f"modules.cogs.{filename[:-3]}")
-            print(f"Loaded cog: {filename[:-3]}")
+    for filename in os.listdir(cogs_path):
+        filepath = join(cogs_path, filename)
+        if not isfile(filepath): continue
+        # is a file, try loading
+        if filename.endswith('.py'):
+            try:
+                # load cog using module path
+                bot.load_extension(filepath.replace('/', '.').replace('//','.'))
+                print(f"Loaded cog: {filename[:-3]}")
+            except Exception as e:
+                print(f"Failed to load cog {filename}: {e}")
 
 # check token and start bot
+load_dotenv()
 token = os.getenv("TOKEN")
 if not token:
     print("TOKEN NOT FOUND OR INVALID TOKEN DETECTED")
     exit()
 
-async def main():
+async def main(token):
     await load_cogs()
     await bot.start(token)
 
 if __name__ == "__main__":
+    assert token is not None
     import asyncio
-    asyncio.run(main())
+    asyncio.run(main(token))

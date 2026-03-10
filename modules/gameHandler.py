@@ -1,8 +1,10 @@
 import random, string
 from nextcord.ext import commands
 from nextcord import Interaction, Embed, Colour, File, TextChannel
-from modules import fileHandler, shared, displaysHandler
+from modules import fileHandler, displaysHandler
 from PIL import Image
+
+from utils import shared_functions
 
 fileHandler.initFiles()
 
@@ -40,9 +42,9 @@ async def createCurrentGameStatusMessage(bot : commands.Bot):
     text = playing[0] + (f" and {len(playing)-1} other"+ ("s" if len(playing) > 2 else "") + " were playing..." if len(playing) > 1 else " was playing...")
     # grab same image as everywhere else
     image : Image = await displaysHandler.getCombinedResultDisplayImage(bot)
-    image.save(f"{shared.path_to_bot}/temp/images/combined-result-gameStatus.png")
+    image.save(f"{shared_functions.path_to_bot}/temp/images/combined-result-gameStatus.png")
 
-    file = File(f"{shared.path_to_bot}/temp/images/combined-result-gameStatus.png", filename="combined-result-gameStatus.png")
+    file = File(f"{shared_functions.path_to_bot}/temp/images/combined-result-gameStatus.png", filename="combined-result-gameStatus.png")
     return text, file
 
 async def sendOrUpdateGameStatusMessage(bot : commands.Bot, interaction : Interaction):
@@ -114,7 +116,7 @@ class GameInstance():
         embed = displaysHandler.createResultsEmbed(self.interaction, self.guesses, self.completed, self.won, gameId=self.gameId)
 
         if len(self.guesses) > 0:
-            await self.interaction.send(embed=embed, file=File(f"{shared.path_to_bot}/temp/images/{self.userId}.png", filename=f"{self.userId}.png"), ephemeral=True)
+            await self.interaction.send(embed=embed, file=File(f"{shared_functions.path_to_bot}/temp/images/{self.userId}.png", filename=f"{self.userId}.png"), ephemeral=True)
         else:
             await self.interaction.send(embed=embed, ephemeral=True)
 
@@ -126,7 +128,7 @@ class GameInstance():
 
         # construct embed and send
         embed = displaysHandler.createResultsEmbed(self.interaction, self.guesses, self.completed, self.won, gameId=self.gameId)
-        await self.interaction.send(embed=embed, file=File(f"{shared.path_to_bot}/temp/images/{self.userId}.png", filename=f"{self.userId}.png"), ephemeral=True, delete_after=30)
+        await self.interaction.send(embed=embed, file=File(f"{shared_functions.path_to_bot}/temp/images/{self.userId}.png", filename=f"{self.userId}.png"), ephemeral=True, delete_after=30)
 
     async def gameWon(self):
         self.completed = True
@@ -136,7 +138,7 @@ class GameInstance():
 
         # construct embed and send
         embed = displaysHandler.createResultsEmbed(self.interaction, self.guesses, self.completed, self.won, gameId=self.gameId)
-        await self.interaction.send(embed=embed, file=File(f"{shared.path_to_bot}/temp/images/{self.userId}.png", filename=f"{self.userId}.png"), ephemeral=True, delete_after=30)
+        await self.interaction.send(embed=embed, file=File(f"{shared_functions.path_to_bot}/temp/images/{self.userId}.png", filename=f"{self.userId}.png"), ephemeral=True, delete_after=30)
 
     async def validateGuess(self, curInteraction : Interaction, guess : str):
         guess = guess.upper()
@@ -186,13 +188,13 @@ class GameInstance():
         await self.updatePlayerData() # save final game state
 
         embed = Embed(title="Oops!", color=Colour.red())
-        embed.set_footer(text=f"{shared.name} #{currentGameData["gameId"]}")
+        embed.set_footer(text=f"{shared_functions.name} #{currentGameData["gameId"]}")
         embed.add_field(name="Game Terminated", value=f"This game has been **terminated!**\nReason: {reason}")
         
         await self.interaction.send(embed=embed, ephemeral=True, delete_after=30)
 
 async def endCurrentGame(bot : commands.Bot, interaction : Interaction, startNew=True, announce=True):
-    channel = bot.get_channel(shared.alerts_channel_id)
+    channel = bot.get_channel(shared_functions.alerts_channel_id)
     if interaction != None and interaction.channel != None:
         channel = interaction.channel
     elif channel == None or not isinstance(channel, TextChannel):
@@ -204,8 +206,8 @@ async def endCurrentGame(bot : commands.Bot, interaction : Interaction, startNew
     # init new game
     if startNew: createNewGame()
 
-    embed = Embed(title="GAME ENDED!", description=f"The current game of {shared.name} has ended!\n", color=Colour.red())
-    embed.set_footer(text=f"{shared.name} #{currentGameData["gameId"]-1}")
+    embed = Embed(title="GAME ENDED!", description=f"The current game of {shared_functions.name} has ended!\n", color=Colour.red())
+    embed.set_footer(text=f"{shared_functions.name} #{currentGameData["gameId"]-1}")
 
     if not resultsImage: # no past results to show
         embed.add_field(name="No available results.", value="", inline=False)
@@ -214,7 +216,7 @@ async def endCurrentGame(bot : commands.Bot, interaction : Interaction, startNew
         if announce: await channel.send(embed=embed)
         if interaction: await interaction.send("Command executed.", ephemeral=True, delete_after=5)
         return
-    resultsImage.save(f"{shared.path_to_bot}/temp/images/combined-result-new.png")
+    resultsImage.save(f"{shared_functions.path_to_bot}/temp/images/combined-result-new.png")
     
     if not announce: return
     # create server alert for new game and stats for last game
@@ -232,6 +234,6 @@ async def endCurrentGame(bot : commands.Bot, interaction : Interaction, startNew
     
     # send alert
     if interaction: await interaction.send("Command executed.", ephemeral=True, delete_after=5)
-    await channel.send(embed=embed, file=File(f"{shared.path_to_bot}/temp/images/combined-result-new.png", "combined-results.png"))
+    await channel.send(embed=embed, file=File(f"{shared_functions.path_to_bot}/temp/images/combined-result-new.png", "combined-results.png"))
 
     

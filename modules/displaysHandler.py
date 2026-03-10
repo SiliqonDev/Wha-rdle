@@ -2,7 +2,8 @@ import nextcord
 from nextcord import Embed, Colour, Interaction
 from nextcord.ext import commands
 from PIL import Image, ImageDraw, ImageFont, ImageOps
-from modules import shared, fileHandler
+from modules import fileHandler
+from utils import shared_functions
 
 resFactor : int = 1 # higher number = sharper images
 gridColors = {
@@ -21,7 +22,24 @@ def getGridColorsAgainstAnswer(guess : str, answer : str):
         else:
             count[l] += 1
 
-    res = []
+    res = [gridColors["NOT"]]*5 # assume all as being "NOT"
+    checked = [0]*5
+    for i in range(5):
+        # get the correct ones
+        ltr = guess[i]
+        if guess[i] == answer[i]:
+            count[ltr] -= 1
+            res[i] = gridColors["YES"]
+            checked[i] = 1
+    for i in range(5):
+        # get the maybe ones
+        if checked[i]: continue # its already accounted for
+        ltr = guess[i]
+        if ltr in count.keys() and count[ltr] > 0:
+            res[i] = gridColors["MAYBE"]
+            count[ltr] -= 1
+
+    '''
     for i in range(5):
         l = guess[i]
         if l not in count.keys():
@@ -35,6 +53,7 @@ def getGridColorsAgainstAnswer(guess : str, answer : str):
         else:
             res.append(gridColors["MAYBE"])
             count[l] -= 1
+    '''
     
     return res
 
@@ -58,7 +77,7 @@ def getResultDisplayImage(guesses, answer, masked=False):
 
             # add letter onto grid
             letter = guesses[i][j]
-            font=ImageFont.truetype(f"{shared.path_to_bot}/files/Helvetica-Bold.ttf", 45*resFactor)
+            font=ImageFont.truetype(f"{shared_functions.path_to_bot}/files/Helvetica-Bold.ttf", 45*resFactor)
             
             _,_,w,h = draw.textbbox((0,0), letter, font=font)
             # position letter in the middle of the grid box
@@ -87,13 +106,13 @@ def constructMask(size : tuple[int,int]):
 async def getPlayerAvatarImage(user : nextcord.User):
     imageResMulti = resFactor*100
     avatarImage = Image.new('RGB', (imageResMulti*5, imageResMulti*3), color=(18,18,19))
-    avatarPath = f"{shared.path_to_bot}/temp/images/{user.id}-avatar.png"
+    avatarPath = f"{shared_functions.path_to_bot}/temp/images/{user.id}-avatar.png"
 
     await user.display_avatar.with_format("png").save(avatarPath)
     savedAvatar = Image.open(avatarPath).resize((256, 256))
     
     # apply circular border mask
-    mask = Image.open(f"{shared.path_to_bot}/files/avatar-mask.png").resize((256,256)).convert('L')
+    mask = Image.open(f"{shared_functions.path_to_bot}/files/avatar-mask.png").resize((256,256)).convert('L')
     output = ImageOps.fit(savedAvatar, mask.size, centering=(0.5, 0.5))
     output.putalpha(mask)
     output.save(avatarPath)
@@ -133,9 +152,9 @@ async def getCombinedResultDisplayImage(bot : commands.Bot, masked=True):
     
     # adding title text
     currentGameData = fileHandler.getGameData()
-    font=ImageFont.truetype(f"{shared.path_to_bot}/files/Helvetica.ttf", 50*resFactor)
+    font=ImageFont.truetype(f"{shared_functions.path_to_bot}/files/Helvetica.ttf", 50*resFactor)
     draw = ImageDraw.Draw(resultsImage)
-    titleText = f"{shared.name} #{currentGameData["gameId"]}"
+    titleText = f"{shared_functions.name} #{currentGameData["gameId"]}"
 
     _,_,w,h = draw.textbbox((0,0), titleText, font=font)
     xpos = (resultsImage.width/2) - (w/2)
@@ -149,11 +168,11 @@ async def getCombinedResultDisplayImage(bot : commands.Bot, masked=True):
 # Creates full personalized result embed for current or past wordle
 def createResultsEmbed(interaction : Interaction, guesses, completed, won, pastGame=False, answer=None, gameId=None):
     currentGameData = fileHandler.getGameData()
-    gameDisplayName = f"{shared.name} #{gameId} (CURRENT LIVE GAME)"
+    gameDisplayName = f"{shared_functions.name} #{gameId} (CURRENT LIVE GAME)"
     if not answer:
         answer = currentGameData["answer"]
     if gameId != currentGameData["gameId"]:
-        gameDisplayName = f"{shared.name} #{gameId} (PAST GAME)"
+        gameDisplayName = f"{shared_functions.name} #{gameId} (PAST GAME)"
 
     title = "Last Played Game" if pastGame else ("Currently Playing" if not completed else ("You Won!" if won else "You Lost!"))
     description = "" if pastGame else ("Use /guess to make a guess" if not completed else (f"You correctly guessed **{answer}**" if won else f"The word was **{answer}**"))
@@ -173,7 +192,7 @@ def createResultsEmbed(interaction : Interaction, guesses, completed, won, pastG
 
     if (len(guesses) > 0):
         resultsImage = getResultDisplayImage(guesses, answer)
-        resultsImage.save(f"{shared.path_to_bot}/temp/images/{interaction.user.id}.png")
+        resultsImage.save(f"{shared_functions.path_to_bot}/temp/images/{interaction.user.id}.png")
         embed.set_image(url=f"attachment://{interaction.user.id}.png")
 
     # done
@@ -181,7 +200,7 @@ def createResultsEmbed(interaction : Interaction, guesses, completed, won, pastG
 
 # Create a leaderboard embed, personalized or non-personalized
 def getLeaderboardEmbeds(bot : commands.Bot, userId=None, n=None):
-    embed1 = Embed(title=f"{shared.name} Leaderboard", color=Colour.gold())
+    embed1 = Embed(title=f"{shared_functions.name} Leaderboard", color=Colour.gold())
 
     players : dict = fileHandler.getAllPlayerStats()
     formattedData = []
@@ -200,7 +219,7 @@ def getLeaderboardEmbeds(bot : commands.Bot, userId=None, n=None):
         embed1.add_field(name="No data available", value="", inline=False)
     embed1.add_field(name="", value="\n", inline=False)
 
-    embed1.set_footer(text=f"{shared.name} | y'all are really bad at this huh")
+    embed1.set_footer(text=f"{shared_functions.name} | y'all are really bad at this huh")
     if not userId: return (embed1)
 
     embed2 = Embed(title=f"Your stats", color=Colour.gold())
