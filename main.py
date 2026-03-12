@@ -20,13 +20,16 @@ filename = inspect.getframeinfo(currentFrame).filename
 cwd = os.path.dirname(os.path.abspath(filename)) # current working directory
 
 # setup logging
-log_file_name = f"{str(datetime.now())}.txt".replace(":","-")
-log_file_path = join(cwd, f"logs\\{log_file_name}") # seperate log file name each time
+log_file_name = f"{datetime.now()}.txt".replace(":", "-")
 
-Path("logs/").mkdir(parents=True, exist_ok=True)
-with open(f"logs/{log_file_name}", 'w') as f:
+log_dir = Path(cwd) / "logs"
+log_dir.mkdir(parents=True, exist_ok=True)
+
+log_file_path = log_dir / log_file_name
+with open(log_file_path, "w"):
     pass
-_logger = Logger("MAIN", log_file_path)
+
+_logger = Logger("MAIN", str(log_file_path))
 
 # load bot config
 config = None
@@ -67,7 +70,7 @@ def load_cogs_from(dir_relative_path : str):
             load_cogs_from(file_relative_path)
         
 def load_cog(relative_path : str):
-        module_path = relative_path.replace('\\', '.')[:-3]
+        module_path = relative_path.replace('/', '.').replace('\\','.')[:-3]
         try:
             # load cog using module path
             bot.load_extension(module_path)
@@ -90,7 +93,10 @@ bot.lang = lang
 
 async def main(token):
     load_cogs_from("cogs")
-    await bot.start(token)
+    try:
+        await bot.start(token)
+    except:
+        print(f"Error trying to establish connection with discord: {e}")
 
 ''' TODO: figure this out
 @atexit.register
