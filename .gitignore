@@ -3,6 +3,7 @@ temp
 data/*.db
 logs
 config.json
+lang.json
 *.env
 *.zip
 *.rar

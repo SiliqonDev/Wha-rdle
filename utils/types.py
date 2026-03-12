@@ -1,13 +1,16 @@
 from typing import Any
+from nextcord import TextChannel
 from nextcord.ext import commands
 from enum import Enum
 
 class WordleBot(commands.Bot):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.config : BotConfig
+        self.config : Config
+        self.lang : Config
+        self.alerts_channel : TextChannel
 
-class BotConfig:
+class Config:
     """
     a class to streamline bot configuration data access
     """
@@ -22,18 +25,19 @@ class BotConfig:
     
     def set(self, key : str, value : Any) -> None:
         self.config[key] = value
-    def get(self, key : str) -> Any | None:
+    def get(self, key : str) -> Any:
         if key in self.config.keys():
             return self.config[key]
         return None
 
-class InternalData:
+class CurrentGameInfo:
     """
     a class to manage data for internal use
     """
     def __init__(self,
                  gameId : int = 0,
                  answer : str = "",
+                 participants : list[int] = [],
                  past_words : list[str] = []
                 ):
         """
@@ -48,17 +52,22 @@ class InternalData:
         """
         self.gameId = gameId
         self.answer = answer
+        self.participants = participants
         self.past_words = past_words
 
     def getGameId(self) -> int: return self.gameId
     def getAnswer(self) -> str: return self.answer
+    def getParticipants(self) -> list[int]: return self.participants
     def getPastWords(self) -> list[str]: return self.past_words
 
     def setGameId(self, value : int) -> None: self.gameId = value
     def setAnswer(self, value : str) -> None: self.answer = value
+    def setParticipants(self, value : list[int]) -> None: self.participants = value
     def setPastWords(self, value : list[str]) -> None: self.past_words = value
 
     def incrementGameId(self) -> None: self.gameId += 1
+    def addParticipant(self, userId) -> None:
+        self.participants.append(userId)
     
     def bulkUpdate(self, data : dict) -> None:
         """
@@ -70,10 +79,10 @@ class InternalData:
             The dictionary to pull data from.
             If a key exists in `data`, 
             it will update the corresponding value internally
-        valid keys:  gameId, answer, past_words
+        valid keys:  gameId, answer, participants, past_words
         """
         
-        keys = ['gameId', 'answer', 'past_words']
+        keys = ['gameId', 'answer', 'participants', 'past_words']
         # check for each key and update if present
         for key in keys:
             command = f"if '{key}' in data.keys(): self.{key} = data['{key}']"
@@ -149,7 +158,8 @@ class PlayerStats:
     """
     def __init__(self, userId: int, 
                  games_played : int = 0,
-                 games_won : int = 0
+                 games_won : int = 0,
+                 win_streak : int = 0
                 ):
         """
         Parameters
@@ -160,20 +170,27 @@ class PlayerStats:
             The number of games played in total
         games_won : int, optional
             The number of games won
+        win_streak : int, optional
+            The current win streak
         """
         self.userId = userId
         self.games_played = games_played
         self.games_won = games_won
+        self.win_streak = win_streak
     
     def getUserId(self) -> int: return self.userId
     def getGamesPlayed(self) -> int: return self.games_played
     def getGamesWon(self) -> int: return self.games_won
-
+    def getWinStreak(self) -> int: return self.win_streak
+    
     def setGamesPlayed(self, value : int) -> None: self.games_played = value
     def setGamesWon(self, value : int) -> None: self.games_won = value
+    def setWinStreak(self, value : int) -> None: self.win_streak = value
 
     def incrementGamesPlayed(self) -> None: self.games_played += 1
     def incrementGamesWon(self) -> None: self.games_won += 1
+    def incrementWinstreak(self) -> None: self.win_streak += 1
+    def resetWinStreak(self) -> None: self.win_streak = 0
     
     def bulkUpdate(self, data : dict) -> None:
         """
@@ -185,10 +202,10 @@ class PlayerStats:
             The dictionary to pull data from.
             If a key exists in `data`, 
             it will update the corresponding value internally
-        valid keys: games_played, games_won
+        valid keys: games_played, games_won, win_streak
         """
         
-        keys = ['games_played', 'games_won']
+        keys = ['games_played', 'games_won', 'win_streak']
         # check for each key and update if present
         for key in keys:
             command = f"if '{key}' in data.keys(): self.{key} = data['{key}']"

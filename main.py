@@ -1,11 +1,14 @@
 import nextcord, json, inspect, os
-from nextcord import Activity, ActivityType
+from nextcord import Activity, ActivityType, TextChannel
+import atexit
 from os.path import isfile, join
+from typing import cast
 from dotenv import load_dotenv
 from datetime import datetime
 from pathlib import Path
 import asyncio
-from utils.types import BotConfig, WordleBot
+from cogs.services.data import DataService
+from utils.types import Config, WordleBot
 from utils.utils import Logger
 
 # get directory that main.py is in
@@ -28,17 +31,24 @@ _logger = Logger("MAIN", log_file_path)
 # load bot config
 config = None
 try:
-    with open(f"{cwd}/config.json") as f:
-        config = BotConfig(json.load(f))
-    if not config:
-        raise(Exception)
+    with open(f"{cwd}/config.json") as cf:
+        config = Config(json.load(cf))
 except Exception as e:
     _logger.error("Could not load config file!")
     _logger.exception(e)
     exit()
-
 config.set("cwd", cwd)
 config.set("log_file_path", log_file_path) 
+
+# load bot lang
+lang = None
+try:
+    with open(f"{cwd}/lang.json") as lf:
+        lang = Config(json.load(lf))
+except Exception as e:
+    _logger.error("Could not load lang file!")
+    _logger.exception(e)
+    exit()
 
 def load_cogs_from(dir_relative_path : str):
     """
@@ -76,10 +86,23 @@ if not token:
 activity = Activity(name = "Playing Self", type = ActivityType.custom)
 bot = WordleBot(intents=nextcord.Intents.all(), activity=activity)
 bot.config = config
+bot.lang = lang
 
 async def main(token):
     load_cogs_from("cogs")
     await bot.start(token)
+
+''' TODO: figure this out
+@atexit.register
+async def on_close():
+    data_service : DataService = cast(DataService, bot.get_cog("data_service"))
+    await data_service._autosave()
+'''
+    
+@bot.event
+async def on_ready():
+    await bot.wait_until_ready()
+    bot.alerts_channel = cast(TextChannel, bot.get_channel(bot.config.get('alerts_channel_id')))
 
 if __name__ == "__main__":
     assert token is not None
@@ -89,34 +112,6 @@ if __name__ == "__main__":
 ###
 ### COMMANDS
 ###
-
-@bot.slash_command(description=f"Play a game of {name}")
-async def play(interaction : Interaction):
-    if interaction.user == None: return
-    userId = interaction.user.id
-
-    # leftover game from earlier?
-    data = fileHandler.getLastGameDataOf(userId)
-    if (userId not in active_games.keys()) and (not data["completed"]) and (data["id"] == gameHandler.currentGameData["gameId"]):
-        await interaction.response.send_message("You already have an ongoing game! Use /guess", ephemeral=True, delete_after=10)
-        return
-
-    # eligibility check to start new game right now
-    eligible = canUserPlayGame(userId)
-    if not eligible:
-        await interaction.response.send_message("You cannot start a new game right now!", ephemeral=True, delete_after=10)
-        return
-
-    await interaction.response.defer() # prevent webhook token expiration during game
-    # alerts
-    await interaction.send(f"Starting a game of {name}",ephemeral=True, delete_after=5)
-
-    # make game instance and run
-    instance = gameHandler.GameInstance(bot, interaction)
-    await instance.initGame()
-    print(f"{interaction.user} started playing")
-
-    active_games[userId] = instance
 
 @bot.slash_command(description=f"Make a guess in your game of {name}")
 async def guess(interaction : Interaction, guess : str = SlashOption(description="Your guess", required=True)):
@@ -166,18 +161,6 @@ async def view(interaction : Interaction):
 async def show(interaction: Interaction):
     await view(interaction)
 
-## create new game
-@bot.slash_command(description=f"Start a new {name}")
-async def new(interaction: Interaction):
-    if interaction.user == None: return
-    userId = interaction.user.id
-
-    if userId not in admin_ids:
-        await interaction.response.send_message("Nuh uh.", ephemeral=True, delete_after=10)
-        return
-    await cleanupGameData()
-    await gameHandler.endCurrentGame(bot, interaction)
-
 @bot.slash_command(description="Show everyone's progress on the current game")
 async def showall(interaction: Interaction):
     resultsImage = await displaysHandler.getCombinedResultDisplayImage(bot)
@@ -194,25 +177,4 @@ async def stats(interaction: Interaction):
     embeds = displaysHandler.getLeaderboardEmbeds(bot, interaction.user.id)
     await interaction.send(embed=embeds[0])
     await interaction.send(embed=embeds[1], ephemeral=True, delete_after=60)
-
-###
-### MISC METHODS
-###
-
-def canUserPlayGame(userId):
-    # game running
-    if userId in active_games.keys():
-        return False
-    # already played this one
-    playerData = fileHandler.getLastGameDataOf(userId)
-    latestGameId = fileHandler.getGameData()["gameId"]
-    # some bug??
-    if playerData["id"] > latestGameId:
-        playerData["id"] = latestGameId
-        return True
-    # current game also completed
-    if playerData["id"] == latestGameId and playerData["completed"]:
-        return False
-    # all good
-    return True
 """

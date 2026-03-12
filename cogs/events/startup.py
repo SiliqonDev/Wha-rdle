@@ -1,6 +1,7 @@
 from nextcord.ext.commands import Cog
 from typing import cast # use of cast is to make the typechecker happy
-from utils.types import WordleBot, BotConfig
+from cogs.services.game import GameService
+from utils.types import WordleBot, Config
 from utils.utils import Logger
 from cogs.services.data import DataService
 
@@ -10,7 +11,7 @@ class StartupEvent(Cog, name="startup_events"):
     """
     def __init__(self, bot : WordleBot) -> None:
         self._bot : WordleBot = bot
-        self._config : BotConfig = bot.config
+        self._config : Config = bot.config
         
         # logger
         self._log_file_path : str | None = self._config.get('log_file_path')
@@ -24,6 +25,8 @@ class StartupEvent(Cog, name="startup_events"):
         # manually init services that need it
         data_service : DataService = cast(DataService, self._bot.get_cog("data_service"))
         await data_service.initService()
+        game_service : GameService = cast(GameService, self._bot.get_cog("game_service"))
+        await game_service.initService()
 
         self._logger.info(f"Started bot as {self._bot.user}", printToConsole=True)
     

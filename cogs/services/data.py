@@ -1,23 +1,24 @@
 # epic tower of imports
 import pickle
+from typing import Any
 from nextcord.ext import tasks
 from nextcord.ext.commands import Cog
 from pathlib import Path
 from data.interface import DBInterface
-from utils.types import WordleBot, BotConfig, PlayerGameData, PlayerStats, InternalData
+from utils.types import WordleBot, Config, PlayerGameData, PlayerStats, CurrentGameInfo
 from utils.utils import Logger, Cache
 
 class DataService(Cog, name="data_service"):
-    def __init__(self, bot : WordleBot) -> None:
-        """A service to manage all data related to players and games
+    """A service to manage all data related to players and games
 
-        Parameters
-        ----------
-        bot: nextcord.ext.commands.Bot
-            The nextcord bot object
-        """
+            Parameters
+            ----------
+            bot: nextcord.ext.commands.Bot
+                The nextcord bot object
+    """
+    def __init__(self, bot : WordleBot) -> None:
         self._bot = bot
-        self._config : BotConfig = bot.config
+        self._config : Config = bot.config
 
         # logger
         self._log_file_path = self._config.get('log_file_path')
@@ -27,12 +28,8 @@ class DataService(Cog, name="data_service"):
         self._logger.info("Started up successfully.", printToConsole=True)
 
     async def initService(self) -> None:
-        """Connect to the database and build the cache
-
-        Parameters
-        ----------
-        bot_config: modules.types.BotConfig
-            The config file of the bot
+        """
+        Connects to the database and builds the cache
         """
         self._cwd = self._config.get('cwd')
         assert self._cwd is not None
@@ -40,7 +37,7 @@ class DataService(Cog, name="data_service"):
         self._cache = Cache(logger=self._logger, initial_data={
             "player_game_data": {},
             "player_stats": {},
-            "internal_data": InternalData()
+            "current_game_info": CurrentGameInfo()
             })
         
         # connect with db
@@ -65,9 +62,9 @@ class DataService(Cog, name="data_service"):
         autosaves data to protect against crashes
         """
         self._logger.info("Beginning autosave.")
-        await self._savePlayerGameData(self.getPlayerGameData())
-        await self._savePlayerStats(self.getPlayerStats())
-        await self._saveInternalData(self.getInternalData())
+        await self._savePlayerGameData()
+        await self._savePlayerStats()
+        await self._saveCurrentGameInfo()
         self._logger.info("Autosave completed.")
 
     async def _buildCache(self) -> None:
@@ -77,7 +74,7 @@ class DataService(Cog, name="data_service"):
         await self._cacheWordList()
         await self._cachePlayerGameData()
         await self._cachePlayerStats()
-        await self._cacheInternalData()
+        await self._cacheCurrentGameInfo()
         
         # all done
         self._autosave.start()
@@ -86,8 +83,27 @@ class DataService(Cog, name="data_service"):
         """
         initialises important directories if they do not exist.
         """
-        Path(f"{self._cwd}/temp/images").mkdir(parents=True, exist_ok=True)
+        Path(f"{self._cwd}/temp").mkdir(parents=True, exist_ok=True)
         Path(f"{self._cwd}/logs").mkdir(parents=True, exist_ok=True)
+    
+    async def registerUser(self, userId : int) -> None:
+        """
+        Sets up default data for a new user in the database\n
+        Does nothing if user already exists in database
+
+        Parameters
+        ----------
+        userId : int
+            The user to register
+        """
+        if self.userExists(userId): return
+        # save default data
+        data = PlayerGameData(userId)
+        stats = PlayerStats(userId)
+        self._cache.put('player_game_data', key=userId, value=data)
+        self._cache.put('player_stats', key=userId, value=stats)
+        await self._savePlayerGameDataFor(userId, data)
+        await self._savePlayerStatsFor(userId, stats)
     
     ###
     ### CHECKERS
@@ -109,10 +125,16 @@ class DataService(Cog, name="data_service"):
     
     ###
     ### GETTERS
-    def _getterWarning(self, key, userId):
-        self._logger.warning(f'Attemping to retrieve `{key}` for non-existent user `{userId}`!', printToConsole=True)
 
-    def getPlayerGameData(self) -> dict[int, PlayerGameData]:
+    async def getAllowedGuesses(self) -> list:
+        words : Any = self._cache.get(['word_list', 'allowed_guesses'])
+        return words
+    
+    async def getPossibleAnswers(self) -> list:
+        words : Any = self._cache.get(['word_list', 'possible_answers'])
+        return words
+
+    async def getPlayerGameData(self) -> dict[int, PlayerGameData]:
         """
         returns the available PlayerGameData object for all users
         
@@ -125,7 +147,7 @@ class DataService(Cog, name="data_service"):
         assert player_data is not None
         return player_data
     
-    def getPlayerGameDataFor(self, userId : int) -> PlayerGameData | None:
+    async def getPlayerGameDataFor(self, userId : int) -> PlayerGameData:
         """
         returns the PlayerGameData object for a user
 
@@ -136,14 +158,17 @@ class DataService(Cog, name="data_service"):
 
         Returns
         -------
-        data: utils.types.PlayerGameData | None
-            The data if found, else None
+        data: utils.types.PlayerGameData
+            The data associated with the user
         """
         user_data : PlayerGameData | None = self._cache.get(['player_game_data', userId])
-        if not user_data: self._getterWarning('player_game_data', userId)
+        if not user_data:
+            await self.registerUser(userId)
+            user_data : PlayerGameData | None = self._cache.get(['player_game_data', userId])
+        assert user_data is not None
         return user_data
     
-    def getPlayerStats(self) -> dict[int, PlayerStats]:
+    async def getPlayerStats(self) -> dict[int, PlayerStats]:
         """
         returns the available PlayerStats objects for all users
 
@@ -156,7 +181,7 @@ class DataService(Cog, name="data_service"):
         assert player_stats is not None
         return player_stats
     
-    def getPlayerStatsFor(self, userId : int) -> PlayerStats | None:
+    async def getPlayerStatsFor(self, userId : int) -> PlayerStats:
         """
         returns the PlayerStats object of a user
 
@@ -171,19 +196,22 @@ class DataService(Cog, name="data_service"):
             The stats if found, else None
         """
         user_stats : PlayerStats | None = self._cache.get(['player_stats', userId])
-        if not user_stats: self._getterWarning('player_stats', userId)
+        if not user_stats:
+            await self.registerUser(userId)
+            user_stats : PlayerStats | None = self._cache.get(['player_stats', userId])
+        assert user_stats is not None
         return user_stats
 
-    def getInternalData(self) -> InternalData:
+    async def getCurrentGameInfo(self) -> CurrentGameInfo:
         """
-        returns the InternalData object for the bot
+        returns the CurrentGameInfo object for the bot
 
         Returns
         ----------
-        data: utils.types.InternalData
+        data: utils.types.CurrentGameInfo
             The data object
         """
-        data = self._cache.get('internal_data')
+        data = self._cache.get('current_game_info')
         assert data is not None
         return data
 
@@ -211,16 +239,16 @@ class DataService(Cog, name="data_service"):
         """
         self._cache.put(key="player_stats", value=stats)
 
-    def setInternalData(self, data : InternalData) -> None:
+    def setCurrentGameInfo(self, data : CurrentGameInfo) -> None:
         """
-        sets the bot's InternalData object
+        sets the bot's CurrentGameInfo object
 
         Parameters
         ----------
-        data: utils.types.InternalData
-            the new InternalData object
+        data: utils.types.CurrentGameInfo
+            the new CurrentGameInfo object
         """
-        self._cache.put(key='internal_data',value=data)
+        self._cache.put(key='current_game_info',value=data)
 
     def setPlayerGameDataFor(self, userId : int, data : PlayerGameData) -> None:
         """
@@ -250,11 +278,9 @@ class DataService(Cog, name="data_service"):
     
     ###
     ### SAVING
-    ###
-
     async def _savePlayerGameData(self, data : dict[int, PlayerGameData] | None = None) -> None:
         """
-        saves the game data of all given players
+        Saves the game data of all given players
 
         Parameters
         ----------
@@ -264,24 +290,39 @@ class DataService(Cog, name="data_service"):
         if not data:
             data = self._cache.get('player_game_data')
             assert data is not None
-        # go through each user
+
         for userId, pdata in data.items():
-            last_played_game_id : int = pdata.getLastPlayedGameId()
-            guesses : bytes = pickle.dumps(pdata.getGuesses())
-            completed : bool = pdata.isCompleted()
-            won : bool = pdata.isWon()
-            answer : str = pdata.getAnswer()
-            # insert if new, else update
-            await self._db_interface.execute("INSERT INTO player_game_data (userId, last_played_game_id, guesses, completed, won, answer) "\
-                                            "values(?,?,?,?,?,?) ON CONFLICT(userId) Do UPDATE SET "\
-                                            "last_played_game_id=excluded.last_played_game_id, guesses=excluded.guesses, completed=excluded.completed, won=excluded.won, answer=excluded.answer",
-                                            userId, last_played_game_id, guesses, completed, won, answer)
-        # bulk commit all of it
+            await self._savePlayerGameDataFor(userId, pdata, commit=False)
+        # bulk commit everything
         await self._db_interface.commit()
+    async def _savePlayerGameDataFor(self, userId : int, data : PlayerGameData, commit : bool | None = True) -> None:
+        """
+        Saves given player game data for a specific user
+
+        Parameters
+        ----------
+        userId: int
+            The user to save the data for
+        data: utils.types.PlayerGameData
+            The data to save
+        commit: boolean, optional
+            Whether to commit the data to the database right away
+        """
+        last_played_game_id : int = data.getLastPlayedGameId()
+        guesses : bytes = pickle.dumps(data.getGuesses())
+        completed : bool = data.isCompleted()
+        won : bool = data.isWon()
+        answer : str = data.getAnswer()
+        # insert if new, else update
+        await self._db_interface.execute("INSERT INTO player_game_data (userId, last_played_game_id, guesses, completed, won, answer) "\
+                                        "values(?,?,?,?,?,?) ON CONFLICT(userId) DO UPDATE SET "\
+                                        "last_played_game_id=excluded.last_played_game_id, guesses=excluded.guesses, completed=excluded.completed, won=excluded.won, answer=excluded.answer",
+                                        userId, last_played_game_id, guesses, completed, won, answer)
+        if commit: await self._db_interface.commit()
     
     async def _savePlayerStats(self, data : dict[int, PlayerStats] | None = None) -> None:
         """
-        saves the stats of all given players
+        Saves the stats of all given players
 
         Parameters
         ----------
@@ -291,48 +332,63 @@ class DataService(Cog, name="data_service"):
         if not data:
             data = self._cache.get('player_stats')
             assert data is not None
-        # go through each user
+        
         for userId, stats in data.items():
-            games_played : int = stats.getGamesPlayed()
-            games_won : int = stats.getGamesWon()
-            # insert if new, else update
-            await self._db_interface.execute("INSERT INTO player_stats (userId, games_played, games_won) "\
-                                            "values(?,?,?) ON CONFLICT DO UPDATE SET "\
-                                            "games_played=exclueded.games_played, gamesWon=excluded.games_won",
-                                            userId, games_played, games_won)
-        # bulk commit all of it
+            await self._savePlayerStatsFor(userId, stats, commit=False)
+        # bulk commit everything
         await self._db_interface.commit()
-    
-    async def _saveInternalData(self, data : InternalData | None = None) -> None:
+    async def _savePlayerStatsFor(self, userId : int, stats : PlayerStats, commit : bool | None = False) -> None:
         """
-        saves the internal data of the bot
+        Saves given player stats for a specific user
 
         Parameters
         ----------
-        data: dict[int, utils.types.InternalData] | None, optional
+        userId: int
+            The user to save the data for
+        stats: utils.types.PlayerStats
+            The stats to save
+        commit: boolean, optional
+            Whether to commit the data to the database right away
+        """
+        games_played : int = stats.getGamesPlayed()
+        games_won : int = stats.getGamesWon()
+        win_streak : int = stats.getWinStreak()
+        # insert if new, else update
+        await self._db_interface.execute("INSERT INTO player_stats (userId, games_played, games_won, win_streak) "\
+                                        "values(?,?,?, ?) ON CONFLICT DO UPDATE SET "\
+                                        "games_played=excluded.games_played, games_won=excluded.games_won, win_streak=excluded.win_streak",
+                                        userId, games_played, games_won, win_streak)
+        if commit: await self._db_interface.commit()
+    
+    async def _saveCurrentGameInfo(self, data : CurrentGameInfo | None = None) -> None:
+        """
+        Saves the current game info of the bot
+
+        Parameters
+        ----------
+        data: dict[int, utils.types.CurrentGameInfo] | None, optional
             The data to save, grabs from cache if not specified.
         """
         if not data:
-            data = self._cache.get('internal_data')
+            data = self._cache.get('current_game_info')
             assert data is not None
 
         # save
         gameId : int = data.getGameId()
         answer : str = data.getAnswer()
+        participants : bytes = pickle.dumps(data.getParticipants())
         past_words : bytes = pickle.dumps(data.getPastWords())
 
         # insert if doesn't exist, else update
-        await self._db_interface.execute("INSERT INTO internal_data (_id, gameId, answer, past_words) "\
-                                        "values(0, ?, ?, ?) "\
+        await self._db_interface.execute("INSERT INTO current_game_info (_id, gameId, answer, participants, past_words) "\
+                                        "values(0, ?, ?, ?, ?) "\
                                         "ON CONFLICT(_id) DO UPDATE SET "\
-                                        "gameId=excluded.gameId, answer=excluded.answer, past_words=excluded.past_words", 
-                                        gameId, answer, past_words)
+                                        "gameId=excluded.gameId, answer=excluded.answer, participants=excluded.participants, past_words=excluded.past_words", 
+                                        gameId, answer, participants, past_words)
         await self._db_interface.commit()
 
     ###
     ### CACHING
-    ###
-
     # aint no wordle without words
     async def _cacheWordList(self) -> None:
         """
@@ -368,25 +424,25 @@ class DataService(Cog, name="data_service"):
         """
         reply = await self._db_interface.records("SELECT * FROM player_stats")
         for record in reply:
-            userId, games_played, games_won = record
-            pstats = PlayerStats(userId, games_played, games_won)
+            userId, games_played, games_won, win_streak = record
+            pstats = PlayerStats(userId, games_played, games_won, win_streak)
 
             self._cache.put('player_stats', key=userId, value=pstats)
     
-    async def _cacheInternalData(self):
+    async def _cacheCurrentGameInfo(self):
         """
-        grabs all available internal bot data from the database and caches it
+        grabs all available current game info from the database and caches it
         """
-        reply = await self._db_interface.record("SELECT * FROM internal_data WHERE _id=0")
+        reply = await self._db_interface.record("SELECT * FROM current_game_info WHERE _id=0")
         if reply is None:
             # initial data was not created
-            await self._saveInternalData()
-            await self._cacheInternalData()
+            await self._saveCurrentGameInfo()
+            await self._cacheCurrentGameInfo()
             return
         
-        _, gameId, answer, past_words = reply
-        data = InternalData(gameId, answer, past_words)
-        self._cache.put(key='internal_data', value=data)
+        _, gameId, answer, participants, past_words = reply
+        data = CurrentGameInfo(gameId, answer, pickle.loads(participants), pickle.loads(past_words))
+        self._cache.put(key='current_game_info', value=data)
 
 def setup(bot : WordleBot) -> None:
     bot.add_cog(DataService(bot))

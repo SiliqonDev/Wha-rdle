@@ -103,6 +103,12 @@ class Cache:
         self._logger = logger
         self._cache = initial_data
     
+    def isEmpty(self) -> bool:
+        """
+        Returns true if cache is empty, else False
+        """
+        return len(self._cache) == 0
+
     def put(self, *path : str | int | list[str | int] | tuple[str | int], key : Any, value : Any) -> None:
         """
         puts a specified key:value pair in the cache at a given path

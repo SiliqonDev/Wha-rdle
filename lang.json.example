@@ -1,0 +1,21 @@
+{
+    "bot_display_name": "Wha?-rdle",
+    "frontend_error": "There was an internal error while processing your request, please contact the bot owner.",
+    
+    "cannot_start_game": "You cannot start a new game right now!",
+    "game_already_completed": "You have already completed the current game!\nUse `/show`",
+    "game_already_ongoing": "You already have an ongoing game!\nUse `/guess`",
+
+    "game_end_title": "GAME ENDED!",
+    "game_end_description": "The current game has ended!",
+    "no_available_results": "No available results.",
+    "user_did_not_finish_game": "<@{user_id}> did not finish the game.",
+    "won": "Won",
+    "lost": "Lost",
+    "user_result_text": "<@{user_id}> {result} in {move_count} moves.",
+    "game_results_title": "Game Results",
+    "game_end_footer": "Game #{id}",
+    
+    "new_game_started": "A new game has been started!",
+    "confirm_override_on_new": "You are creating a new game for players.\nAny players currently playing will have their games **terminated** and will be marked as **lost**.\nUse **/new confirm=True** to confirm this action"
+}
