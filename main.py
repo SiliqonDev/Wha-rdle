@@ -1,22 +1,29 @@
 import nextcord, json, inspect, os
+from nextcord import Activity, ActivityType
 from os.path import isfile, join
-from modules import fileHandler, gameHandler, displaysHandler
-from nextcord import Interaction, File, SlashOption
-from nextcord.ext import commands, tasks
 from dotenv import load_dotenv
-from pathlib import Path
 from datetime import datetime
-from utils.types import BotConfig
-
-bot = commands.Bot(command_prefix="w?", intents=nextcord.Intents.all())
+from pathlib import Path
+import asyncio
+from utils.types import BotConfig, WordleBot
+from utils.utils import Logger
 
 # get directory that main.py is in
 currentFrame = inspect.currentframe()
 if currentFrame is None:
-    print("CRITICAL: Could not find current working directory!")
+    print("ERROR: Could not find current working directory!")
     exit()
 filename = inspect.getframeinfo(currentFrame).filename
 cwd = os.path.dirname(os.path.abspath(filename)) # current working directory
+
+# setup logging
+log_file_name = f"{str(datetime.now())}.txt".replace(":","-")
+log_file_path = join(cwd, f"logs\\{log_file_name}") # seperate log file name each time
+
+Path("logs/").mkdir(parents=True, exist_ok=True)
+with open(f"logs/{log_file_name}", 'w') as f:
+    pass
+_logger = Logger("MAIN", log_file_path)
 
 # load bot config
 config = None
@@ -26,47 +33,59 @@ try:
     if not config:
         raise(Exception)
 except Exception as e:
-    print("CRITICAL: Could not load config file!",e)
+    _logger.error("Could not load config file!")
+    _logger.exception(e)
     exit()
 
 config.set("cwd", cwd)
-config.set("log_file_path", f"{cwd}/{str(datetime.now())}.log") # set seperate log file name each time
+config.set("log_file_path", log_file_path) 
+
+def load_cogs_from(dir_relative_path : str):
+    """
+    recursively searches for and loads every cog(.py file) from a subfolder
+    """
+    dir_absolute_path = join(cwd, dir_relative_path)
+    for filename in os.listdir(dir_absolute_path):
+        file_absolute_path = join(dir_absolute_path, filename)
+        file_relative_path = join(dir_relative_path, filename)
+
+        # load if .py
+        if filename.endswith('.py'):
+            load_cog(file_relative_path)
+        # if folder, recursively check for cogs inside
+        elif not isfile(file_absolute_path):
+            load_cogs_from(file_relative_path)
+        
+def load_cog(relative_path : str):
+        module_path = relative_path.replace('\\', '.')[:-3]
+        try:
+            # load cog using module path
+            bot.load_extension(module_path)
+            _logger.info(f"Loaded cog: {module_path}", printToConsole=True)
+        except Exception as e:
+            _logger.error(f"Failed to load cog {module_path}")
+            _logger.exception(e)
+
+# check token and start bot
+load_dotenv()
+token = os.getenv("TOKEN")
+if not token:
+    _logger.error("BOT TOKEN NOT FOUND OR INVALID TOKEN")
+    exit()
+
+activity = Activity(name = "Playing Self", type = ActivityType.custom)
+bot = WordleBot(intents=nextcord.Intents.all(), activity=activity)
+bot.config = config
+
+async def main(token):
+    load_cogs_from("cogs")
+    await bot.start(token)
+
+if __name__ == "__main__":
+    assert token is not None
+    asyncio.run(main(token))
 
 """
-## CONSTANTS
-admin_ids_string = os.getenv("ADMIN_USER_IDS")
-admin_ids = [] if admin_ids_string == None else [int(id) for id in admin_ids_string.strip().split(',')]
-name = shared.name
-
-# game cache
-active_games = {}
-autoCleanup = True
-
-###
-### BOT EVENTS
-###
-
-@tasks.loop(seconds=5.0)
-async def gameCleanupLoop():
-    if not autoCleanup: return
-    toclean = []
-    for user in active_games.keys():
-        instance : gameHandler.GameInstance = active_games[user]
-        if not instance or instance.completed:
-            toclean.append(user)
-            print(f"Cleaned up game from {user}")
-    
-    for user in toclean:
-        del active_games[user]
-
-@bot.event
-async def on_ready():
-    data = fileHandler.getGameData()
-    if data['gameId'] < 0: gameHandler.createNewGame() # start new game if first time running
-    gameCleanupLoop.start()
-    
-    print(f"Started bot as {bot.user}")
-
 ###
 ### COMMANDS
 ###
@@ -180,22 +199,6 @@ async def stats(interaction: Interaction):
 ### MISC METHODS
 ###
 
-async def cleanupGameData():
-    global active_games, autoCleanup
-    autoCleanup = False
-
-    for user in active_games:
-        instance : gameHandler.GameInstance = active_games[user]
-        if not instance.completed:
-            await instance.terminate(f"The current {name} has ended! A **new one** has started in its place!")
-    active_games = {}
-    for filename in os.listdir(f"{shared.path_to_bot}/temp/images"):
-        file_path = os.path.join(f"{shared.path_to_bot}/temp/images", filename)
-        if os.path.isfile(file_path):
-            os.remove(file_path)
-    
-    autoCleanup = True
-
 def canUserPlayGame(userId):
     # game running
     if userId in active_games.keys():
@@ -213,33 +216,3 @@ def canUserPlayGame(userId):
     # all good
     return True
 """
-
-cogs_path = f'{cwd}/cogs'
-async def load_cogs():
-    for filename in os.listdir(cogs_path):
-        filepath = join(cogs_path, filename)
-        if not isfile(filepath): continue
-        # is a file, try loading
-        if filename.endswith('.py'):
-            try:
-                # load cog using module path
-                bot.load_extension(filepath.replace('/', '.').replace('//','.'))
-                print(f"Loaded cog: {filename[:-3]}")
-            except Exception as e:
-                print(f"Failed to load cog {filename}: {e}")
-
-# check token and start bot
-load_dotenv()
-token = os.getenv("TOKEN")
-if not token:
-    print("TOKEN NOT FOUND OR INVALID TOKEN DETECTED")
-    exit()
-
-async def main(token):
-    await load_cogs()
-    await bot.start(token)
-
-if __name__ == "__main__":
-    assert token is not None
-    import asyncio
-    asyncio.run(main(token))

@@ -1,11 +1,8 @@
 # for sharing the bot code
-/temp
-/modules/__pycache__
-/utils/__pycache__
-/cogs/__pycache__
-/data/__pycache
-/data/*.db
-logs/
+temp
+data/*.db
+logs
+config.json
 *.env
 *.zip
 *.rar

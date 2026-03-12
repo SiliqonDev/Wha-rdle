@@ -1,107 +1,11 @@
 from typing import Any
-from utils.shared_functions import flatten
-from utils.logger import Logger
+from nextcord.ext import commands
+from enum import Enum
 
-class Cache:
-    """
-    A class to allow easy creation and handling of a cache
-    """
-    def __init__(self, logger : Logger, initial_data : dict = {}):
-        """
-        Parameters
-        ----------
-        logger: utils.logger.Logger
-            the logger object that the cache will utilise
-        initial_data : dict, optional
-            cache data at initialisation, `{}` if None
-        """
-        self._logger = logger
-        self._cache = initial_data
-    
-    def put(self, *path : str | int | list[str | int] | tuple[str | int], key : Any, value : Any) -> None:
-        """
-        puts a specified key:value pair in the cache at a given path
-
-        Parameters
-        ----------
-        *path : str | int | list[str|int] | tuple[str|int]
-            The path inside the cache at which to insert the key:value pair.\n
-            Example paths: `"my_data"`, `["previous_games", "round_data", 1]`, `("items", "legendary")`
-        key : Any
-            The key. Must be an immutable object
-        value : Any
-            The value to put.
-        """
-        if not path: # set at root
-            self._cache[key] = value
-            return None
-        # support nested sequences in given path
-        flatpath = flatten(path)
-        # follow path
-        curLoc : dict = self._cache
-        try:
-            for loc in flatpath:
-                # account for keys in the path that do not exist
-                if loc not in curLoc.keys():
-                    curLoc[loc] = {}
-                curLoc = curLoc[loc]  
-            # successfully found location
-            curLoc[key] = value  
-        except Exception as e:
-            self._logger.error(f"Invalid Cache.set() operation to path {path}")
-            self._logger.exception(e)
-
-    def get(self, *path : str | int | list[str | int] | tuple[str | int]) -> Any | None:
-        """
-        returns the value present in the cache at a given path\n
-        returns whole cache if no path specified
-
-        Parameters
-        ----------
-        *path : str | int | list[str|int] | tuple[str|int]
-            The path inside the cache from which to return the value.\n
-            Example paths: `"my_data"`, `["previous_games", "round_data", 1]`, `("items", "legendary")`
-        
-        Returns
-        -------
-        value : Any | None
-            The retrieved value if any, else None
-        """
-        if not path: return self._cache
-        # support nested sequences in given path
-        flatpath = flatten(path)
-        # follow path
-        curLoc : dict = self._cache.copy()
-        try:
-            for loc in flatpath:
-                # wanted key doesnt exist in cache
-                if loc not in curLoc.keys():
-                    return None
-                curLoc = curLoc[loc]
-            # successfully found
-            return curLoc
-        except Exception as e:
-            self._logger.error(f"Invalid Cache.get() operation for path {path}")
-            self._logger.exception(e)
-            return None
-    
-    def exists(self, *path : str | int | list[str | int] | tuple[str | int]) -> bool:
-        """
-        checks whether any data is stored in the cache at a given path
-
-        Parameters
-        ----------
-        *path : str | int | list[str|int] | tuple[str|int]
-            The path inside the cache from which to return the value.\n
-            Example paths: `"my_data"`, `["previous_games", "round_data", 1]`, `("items", "legendary")`
-        
-        Returns
-        -------
-        exists : bool
-            True if value assigned, else False
-        """
-        obj : Any = self.get(*path)
-        return obj is not None
+class WordleBot(commands.Bot):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.config : BotConfig
 
 class BotConfig:
     """
@@ -180,6 +84,7 @@ class PlayerGameData:
     a class to manage the current available game data for a user
     """
     def __init__(self, userId: int, 
+                 last_played_game_id : int = -1,
                  guesses : list[str] = [], 
                  completed : bool = False, 
                  won : bool = False, 
@@ -200,17 +105,20 @@ class PlayerGameData:
             The correct answer in that game
         """
         self.userId = userId
+        self.last_played_game_id = last_played_game_id
         self.guesses = guesses
         self.completed = completed
         self.won = won
         self.answer = answer
     
+    def getLastPlayedGameId(self) -> int: return self.last_played_game_id
     def getUserId(self) -> int: return self.userId
     def getGuesses(self) -> list[str]: return self.guesses
     def isCompleted(self) -> bool: return self.completed
     def isWon(self) -> bool: return self.won
     def getAnswer(self) -> str: return self.answer
 
+    def setLastPlayedGameId(self, value : int) -> None: self.last_played_game_id = value
     def setGuesses(self, value: list[str]) -> None: self.guesses = value
     def setCompleted(self, value: bool) -> None: self.completed = value
     def setWon(self, value : bool) -> None: self.won = value
@@ -226,10 +134,10 @@ class PlayerGameData:
             The dictionary to pull data from.
             If a key exists in `data`, 
             it will update the corresponding value internally
-        valid keys: guesses, completed, won, answer
+        valid keys: last_played_game_id, guesses, completed, won, answer
         """
         
-        keys = ['guesses', 'completed', 'won', 'answer']
+        keys = ['last_played_game_id', 'guesses', 'completed', 'won', 'answer']
         # check for each key and update if present
         for key in keys:
             command = f"if '{key}' in data.keys(): self.{key} = data['{key}']"
@@ -285,3 +193,10 @@ class PlayerStats:
         for key in keys:
             command = f"if '{key}' in data.keys(): self.{key} = data['{key}']"
             exec(command)
+
+class PlayerGameState(Enum):
+    UNKNOWN = "UNKNOWN"
+    NOT_STARTED = "NOT_STARTED"
+    ONGOING = "ONGOING"
+    INCOMPLETE = "INCOMPLETE"
+    COMPLETED = "COMPLETED"

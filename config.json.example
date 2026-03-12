@@ -1,0 +1,9 @@
+{
+    "display_name": "Wha?-rdle",
+    "alerts_channel_id": "1234",
+    "alerts_ping_role_id": 0,
+    "admin_ids": [123456789, 987654321],
+
+    "version": "beta-0.3",
+    "debug": false
+}

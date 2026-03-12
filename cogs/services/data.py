@@ -1,17 +1,14 @@
-# the tower of imports
+# epic tower of imports
 import pickle
 from nextcord.ext import tasks
-from nextcord.ext.commands import Bot, Cog
+from nextcord.ext.commands import Cog
 from pathlib import Path
-from typing import Any
 from data.interface import DBInterface
-from utils.logger import Logger
-from utils.types import PlayerGameData, PlayerStats, InternalData, BotConfig, Cache
-
-# TODO
+from utils.types import WordleBot, BotConfig, PlayerGameData, PlayerStats, InternalData
+from utils.utils import Logger, Cache
 
 class DataService(Cog, name="data_service"):
-    def __init__(self, bot : Bot) -> None:
+    def __init__(self, bot : WordleBot) -> None:
         """A service to manage all data related to players and games
 
         Parameters
@@ -20,8 +17,16 @@ class DataService(Cog, name="data_service"):
             The nextcord bot object
         """
         self._bot = bot
+        self._config : BotConfig = bot.config
 
-    async def initService(self, bot_config : BotConfig) -> None:
+        # logger
+        self._log_file_path = self._config.get('log_file_path')
+        assert self._log_file_path is not None
+        self._logger = Logger("DataService", self._log_file_path)
+
+        self._logger.info("Started up successfully.", printToConsole=True)
+
+    async def initService(self) -> None:
         """Connect to the database and build the cache
 
         Parameters
@@ -29,19 +34,16 @@ class DataService(Cog, name="data_service"):
         bot_config: modules.types.BotConfig
             The config file of the bot
         """
-        self._bot_config = bot_config
-        self._cwd = bot_config.get('cwd')
-        self._log_file_path = bot_config.get('log_file_path')
-        
+        self._cwd = self._config.get('cwd')
         assert self._cwd is not None
-        assert self._log_file_path is not None
-        
-        self._logger = Logger("DataService", self._log_file_path)
+
         self._cache = Cache(logger=self._logger, initial_data={
             "player_game_data": {},
             "player_stats": {},
             "internal_data": InternalData()
             })
+        
+        # connect with db
         try:
             self._db_interface = DBInterface()
             await self._db_interface.connect(self._cwd)
@@ -54,15 +56,19 @@ class DataService(Cog, name="data_service"):
         
         await self._makeDirectories()
         await self._buildCache()
+        # all done and dusted
+        self._logger.info("Cache initialised", printToConsole=True)
     
-    @tasks.loop(seconds=30)
+    @tasks.loop(seconds=120)
     async def _autosave(self) -> None:
         """
         autosaves data to protect against crashes
         """
+        self._logger.info("Beginning autosave.")
         await self._savePlayerGameData(self.getPlayerGameData())
         await self._savePlayerStats(self.getPlayerStats())
         await self._saveInternalData(self.getInternalData())
+        self._logger.info("Autosave completed.")
 
     async def _buildCache(self) -> None:
         """
@@ -85,11 +91,24 @@ class DataService(Cog, name="data_service"):
     
     ###
     ### CHECKERS
-    ###
+    def userExists(self, userId : int) -> bool:
+        """
+        returns whether the user is present in the database
+
+        Parameters
+        ----------
+        userId : int
+            The discord ID of the user to check for
+
+        Returns
+        -------
+        value: bool
+            True if any data is present, else False
+        """
+        return self._cache.exists('player_game_data', userId) 
     
     ###
     ### GETTERS
-    ###
     def _getterWarning(self, key, userId):
         self._logger.warning(f'Attemping to retrieve `{key}` for non-existent user `{userId}`!', printToConsole=True)
 
@@ -170,8 +189,6 @@ class DataService(Cog, name="data_service"):
 
     ###
     ### SETTERS
-    ###
-
     def setPlayerGameData(self, data : dict[int, PlayerGameData]) -> None:
         """
         sets the global player game data in the cache
@@ -249,15 +266,16 @@ class DataService(Cog, name="data_service"):
             assert data is not None
         # go through each user
         for userId, pdata in data.items():
+            last_played_game_id : int = pdata.getLastPlayedGameId()
             guesses : bytes = pickle.dumps(pdata.getGuesses())
             completed : bool = pdata.isCompleted()
             won : bool = pdata.isWon()
             answer : str = pdata.getAnswer()
             # insert if new, else update
-            await self._db_interface.execute("INSERT INTO player_game_data (userId, guesses, completed, won, answer) "\
-                                            f"values({userId}, {guesses}, {completed}, {won}, {answer}) ON DUPLICATE KEY "\
-                                            f"UPDATE guesses={guesses}, completed={completed}, won={won}, answer={answer}"
-                                            )
+            await self._db_interface.execute("INSERT INTO player_game_data (userId, last_played_game_id, guesses, completed, won, answer) "\
+                                            "values(?,?,?,?,?,?) ON CONFLICT(userId) Do UPDATE SET "\
+                                            "last_played_game_id=excluded.last_played_game_id, guesses=excluded.guesses, completed=excluded.completed, won=excluded.won, answer=excluded.answer",
+                                            userId, last_played_game_id, guesses, completed, won, answer)
         # bulk commit all of it
         await self._db_interface.commit()
     
@@ -279,9 +297,9 @@ class DataService(Cog, name="data_service"):
             games_won : int = stats.getGamesWon()
             # insert if new, else update
             await self._db_interface.execute("INSERT INTO player_stats (userId, games_played, games_won) "\
-                                            f"values({userId}, {games_played}, {games_won}) ON DUPLICATE KEY "\
-                                            f"UPDATE games_played={games_played}, gamesWon={games_won}"
-                                            )
+                                            "values(?,?,?) ON CONFLICT DO UPDATE SET "\
+                                            "games_played=exclueded.games_played, gamesWon=excluded.games_won",
+                                            userId, games_played, games_won)
         # bulk commit all of it
         await self._db_interface.commit()
     
@@ -304,9 +322,11 @@ class DataService(Cog, name="data_service"):
         past_words : bytes = pickle.dumps(data.getPastWords())
 
         # insert if doesn't exist, else update
-        await self._db_interface.execute("INSERT INTO internal_data (_id, gameId, answer, past_words)"\
-                                        f"values(0, {gameId}, {answer}, {past_words}) ON DUPLICATE KEY"\
-                                        f"UPDATE gameId={gameId}, answer={answer}, past_words={past_words}")
+        await self._db_interface.execute("INSERT INTO internal_data (_id, gameId, answer, past_words) "\
+                                        "values(0, ?, ?, ?) "\
+                                        "ON CONFLICT(_id) DO UPDATE SET "\
+                                        "gameId=excluded.gameId, answer=excluded.answer, past_words=excluded.past_words", 
+                                        gameId, answer, past_words)
         await self._db_interface.commit()
 
     ###
@@ -338,8 +358,8 @@ class DataService(Cog, name="data_service"):
         """
         reply = await self._db_interface.records("SELECT * FROM player_game_data")
         for record in reply:
-            userId, guesses, completed, won, answer = record
-            pdata = PlayerGameData(userId, pickle.loads(guesses), completed, won, answer)
+            userId, last_played_game_id, guesses, completed, won, answer = record
+            pdata = PlayerGameData(userId, last_played_game_id, pickle.loads(guesses), completed, won, answer)
             self._cache.put('player_game_data', key=userId, value=pdata)
     
     async def _cachePlayerStats(self) -> None:
@@ -357,12 +377,16 @@ class DataService(Cog, name="data_service"):
         """
         grabs all available internal bot data from the database and caches it
         """
-        reply = await self._db_interface.record("SELECT * FROM InternalData WHERE _id=0")
-        assert reply is not None
+        reply = await self._db_interface.record("SELECT * FROM internal_data WHERE _id=0")
+        if reply is None:
+            # initial data was not created
+            await self._saveInternalData()
+            await self._cacheInternalData()
+            return
         
-        gameId, answer, past_words = reply[0] # first and only row
+        _, gameId, answer, past_words = reply
         data = InternalData(gameId, answer, past_words)
         self._cache.put(key='internal_data', value=data)
 
-def setup(bot : Bot) -> None:
+def setup(bot : WordleBot) -> None:
     bot.add_cog(DataService(bot))
