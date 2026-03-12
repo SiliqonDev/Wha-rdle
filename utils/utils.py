@@ -10,7 +10,8 @@ class Logger():
                    level : int = logging.INFO,
                    print_level : int = logging.INFO,
                    format : str = "[%(asctime)s][%(name)s][%(levelname)s]: %(message)s",
-                   colors : bool = True
+                   colors : bool = True,
+                   debug_mode : bool = False
     ):
         self.name = name
         self.filepath = filepath
@@ -18,6 +19,7 @@ class Logger():
         self.print_level = print_level
         self.format = format
         self.colors = colors
+        self.debug_mode = debug_mode
 
         self._handler = logging.FileHandler(filepath, encoding="utf-8", mode='a')
         self._handler.setFormatter(logging.Formatter(format))
@@ -59,6 +61,7 @@ class Logger():
     
     # Log a debug message
     def debug(self, *args : str, printToConsole : bool = False, **kwargs):
+        if not self.debug_mode: return # debugging is off
         self._log(*args, level=logging.DEBUG, **kwargs)
         if printToConsole: self._printToConsole(logging.DEBUG, *args)
     

@@ -8,7 +8,7 @@ from cogs.services.data import DataService
 
 class GameService(Cog, name="game_service"):
     """
-    A service to make and manage all the games of wordle
+    A service to make and manage all game instances
     """
     def __init__(self, bot : WordleBot) -> None:
         self._bot : WordleBot = bot
@@ -18,7 +18,7 @@ class GameService(Cog, name="game_service"):
         # logger
         self._log_file_path : str | None = self._config.get('log_file_path')
         assert self._log_file_path is not None
-        self._logger : Logger = Logger("GameService", self._log_file_path)
+        self._logger : Logger = Logger("GameService", self._log_file_path, debug_mode=self._config.get('debug_mode'))
 
         self._data_service : DataService
 
@@ -32,7 +32,7 @@ class GameService(Cog, name="game_service"):
         self._current_game_info : CurrentGameInfo = await self._data_service.getCurrentGameInfo()
 
         # setup done
-        self._logger.info("Started up successfully.", printToConsole=True)
+        self._logger.debug("Started up successfully.", printToConsole=True)
     
     async def initNewGame(self, terminate_ongoing : bool = False) -> Literal["SUCCESS", "NEED_CONFIRMATION"]:
         """
@@ -139,7 +139,7 @@ def setup(bot : WordleBot) -> None:
 
 class GameInstance():
     """
-    A class to create and manage a game of wordle that is being played
+    A class to create and manage a particular game instance
     """
     def __init__(self, bot : WordleBot, logger : Logger, answer : str, starting_guesses : list[str] = []):
         self._bot : WordleBot = bot

@@ -3,5 +3,5 @@
     "admin_ids": [123456789, 987654321],
 
     "version": "beta-0.3",
-    "debug": false
+    "debug_mode": false
 }

@@ -1,8 +1,7 @@
-import nextcord, json, inspect, os
-from nextcord import Activity, ActivityType, TextChannel
-import atexit
+import nextcord, json, inspect, os, signal
+from nextcord import Activity, ActivityType
 from os.path import isfile, join
-from typing import cast
+from typing import Literal, cast
 from dotenv import load_dotenv
 from datetime import datetime
 from pathlib import Path
@@ -37,11 +36,13 @@ try:
     with open(f"{cwd}/config.json") as cf:
         config = Config(json.load(cf))
 except Exception as e:
-    _logger.error("Could not load config file!")
+    _logger.critical("Could not load config file!", printToConsole=True)
     _logger.exception(e)
     exit()
 config.set("cwd", cwd)
-config.set("log_file_path", log_file_path) 
+config.set("log_file_path", log_file_path)
+
+_logger.debug_mode = config.get('debug_mode')
 
 # load bot lang
 lang = None
@@ -49,7 +50,7 @@ try:
     with open(f"{cwd}/lang.json") as lf:
         lang = Config(json.load(lf))
 except Exception as e:
-    _logger.error("Could not load lang file!")
+    _logger.critical("Could not load lang file!", printToConsole=True)
     _logger.exception(e)
     exit()
 
@@ -74,45 +75,59 @@ def load_cog(relative_path : str):
         try:
             # load cog using module path
             bot.load_extension(module_path)
-            _logger.info(f"Loaded cog: {module_path}", printToConsole=True)
+            _logger.debug(f"Loaded cog: {module_path}", printToConsole=True)
         except Exception as e:
-            _logger.error(f"Failed to load cog {module_path}")
+            _logger.error(f"Failed to load cog {module_path}", printToConsole=True)
             _logger.exception(e)
 
 # check token and start bot
 load_dotenv()
 token = os.getenv("TOKEN")
 if not token:
-    _logger.error("BOT TOKEN NOT FOUND OR INVALID TOKEN")
+    _logger.critical("BOT TOKEN NOT FOUND OR INVALID TOKEN", printToConsole=True)
     exit()
 
 activity = Activity(name = "Playing Self", type = ActivityType.custom)
 bot = WordleBot(intents=nextcord.Intents.all(), activity=activity)
 bot.config = config
 bot.lang = lang
+load_cogs_from("cogs")
 
 async def main(token):
-    load_cogs_from("cogs")
+    main_task = asyncio.current_task()
+    assert main_task is not None
+    loop = asyncio.get_running_loop()
+
+    def stop_main(sig: Literal[signal.Signals.SIGINT, signal.Signals.SIGTERM]):
+        _logger.warning("Detected {sig.name}, attempting graceful exit.", printToConsole=True)
+        main_task.cancel()
+
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        loop.add_signal_handler(sig, lambda sig=sig: stop_main(sig))
+
     try:
         await bot.start(token)
-    except:
-        print(f"Error trying to establish connection with discord: {e}")
+    except asyncio.CancelledError:
+        _logger.warning("Main task cancelled.", printToConsole=True)
+    except Exception as e:
+        _logger.error(f"Error while attempting to start the bot", printToConsole=True)
+        _logger.exception(e)
+    finally:
+        await graceful_exit()
 
-''' TODO: figure this out
-@atexit.register
-async def on_close():
+async def graceful_exit():
+    _logger.info("Saving all data...", printToConsole=True)
     data_service : DataService = cast(DataService, bot.get_cog("data_service"))
     await data_service._autosave()
-'''
-    
-@bot.event
-async def on_ready():
-    await bot.wait_until_ready()
-    bot.alerts_channel = cast(TextChannel, bot.get_channel(bot.config.get('alerts_channel_id')))
+    _logger.info("Saved all data.", printToConsole=True)
+    _logger.info("Shutting down... Bye!", printToConsole=True)
 
 if __name__ == "__main__":
     assert token is not None
-    asyncio.run(main(token))
+    try:
+        asyncio.run(main(token))
+    except KeyboardInterrupt:
+        pass
 
 """
 ###

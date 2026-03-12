@@ -1,3 +1,4 @@
+from nextcord import TextChannel
 from nextcord.ext.commands import Cog
 from typing import cast # use of cast is to make the typechecker happy
 from cogs.services.game import GameService
@@ -16,11 +17,12 @@ class StartupEvent(Cog, name="startup_events"):
         # logger
         self._log_file_path : str | None = self._config.get('log_file_path')
         assert self._log_file_path is not None
-        self._logger = Logger("Startup", self._log_file_path)
+        self._logger = Logger("Startup", self._log_file_path, debug_mode=self._config.get('debug_mode'))
     
     @Cog.listener()
     async def on_ready(self):
-        self._logger.info("Starting up!", printToConsole=True)
+        self._logger.debug("Starting up!", printToConsole=True)
+        self._bot.alerts_channel = cast(TextChannel, self._bot.get_channel(self._bot.config.get('alerts_channel_id')))
 
         # manually init services that need it
         data_service : DataService = cast(DataService, self._bot.get_cog("data_service"))

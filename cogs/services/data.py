@@ -9,12 +9,8 @@ from utils.types import WordleBot, Config, PlayerGameData, PlayerStats, CurrentG
 from utils.utils import Logger, Cache
 
 class DataService(Cog, name="data_service"):
-    """A service to manage all data related to players and games
-
-            Parameters
-            ----------
-            bot: nextcord.ext.commands.Bot
-                The nextcord bot object
+    """
+    A service to manage all data related to players and games
     """
     def __init__(self, bot : WordleBot) -> None:
         self._bot = bot
@@ -23,9 +19,7 @@ class DataService(Cog, name="data_service"):
         # logger
         self._log_file_path = self._config.get('log_file_path')
         assert self._log_file_path is not None
-        self._logger = Logger("DataService", self._log_file_path)
-
-        self._logger.info("Started up successfully.", printToConsole=True)
+        self._logger = Logger("DataService", self._log_file_path, debug_mode=self._config.get('debug_mode'))
 
     async def initService(self) -> None:
         """
@@ -51,10 +45,12 @@ class DataService(Cog, name="data_service"):
             # shutdown bot
             await self._bot.close()
         
+        self._logger.debug("Started up successfully.", printToConsole=True)
+        
         await self._makeDirectories()
         await self._buildCache()
         # all done and dusted
-        self._logger.info("Cache initialised", printToConsole=True)
+        self._logger.debug("Cache initialised", printToConsole=True)
     
     @tasks.loop(seconds=120)
     async def _autosave(self) -> None:
