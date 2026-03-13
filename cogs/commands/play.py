@@ -30,18 +30,15 @@ class PlayCommand(Cog, name="play_command"):
         match game_state:
             case PlayerGameState.ONGOING:
                 await interaction.response.send_message(self._lang.get("game_already_ongoing"), delete_after=10)
-                return
             case PlayerGameState.UNKNOWN:
                 await interaction.response.send_message(self._lang.get("frontend_error"), delete_after=10)
-                return
-            case PlayerGameState.NOT_STARTED:
-                await self._game_service.startGameFor(userId, interaction, resume=False)
-                return
             case PlayerGameState.INCOMPLETE:
-                await self._game_service.startGameFor(userId, interaction, resume=True)
-                return
+                await interaction.response.send_message(self._lang.get("game_already_ongoing"), delete_after=10)
             case PlayerGameState.COMPLETED:
                 await interaction.response.send_message(self._lang.get("game_already_completed"), delete_after=10)
+            case PlayerGameState.NOT_STARTED:
+                await interaction.response.defer()
+                await self._game_service.startGameFor(userId, interaction, resume=False)
 
 def setup(bot : WordleBot) -> None:
     bot.add_cog(PlayCommand(bot))

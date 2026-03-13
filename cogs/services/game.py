@@ -1,8 +1,11 @@
+import io
 import random
+import string
 from typing import Literal, cast # use of cast is to make the typechecker happy
-from nextcord import Colour, Embed, Interaction, Role, TextChannel
+from nextcord import Colour, Embed, File, Interaction, TextChannel
 from nextcord.ext.commands import Cog
-from utils.types import CurrentGameInfo, WordleBot, Config, PlayerGameState, PlayerGameData
+from utils.shared_functions import createResultsEmbed, getUserResultsImageBytes
+from utils.types import CurrentGameInfo, PlayerStats, WordleBot, Config, PlayerGameState, PlayerGameData
 from utils.utils import Logger
 from cogs.services.data import DataService
 
@@ -47,13 +50,16 @@ class GameService(Cog, name="game_service"):
         if (len(self._active_games) > 0) and (not terminate_ongoing):
             return "NEED_CONFIRMATION"
         
-        embed : Embed = await self.getGameEndEmbed()
+        # TODO: terminate games
+        
+        embed : Embed = await self._getGameEndEmbed()
         answer : str = random.choice(await self._data_service.getPossibleAnswers())
         answer = answer.upper()
         self._current_game_info.setAnswer(answer)
         self._current_game_info.incrementGameId()
+        self._current_game_info.resetParticipants()
 
-        # alert everyone
+        # send out an alert
         alerts_channel : TextChannel = self._bot.alerts_channel
         await alerts_channel.send(embed=embed)
 
@@ -73,8 +79,18 @@ class GameService(Cog, name="game_service"):
         resume : bool, optional
             Resume the last played game (if any) if True, else start new
         """
-        pdata : PlayerGameData = await self._data_service.getPlayerGameDataFor(userId)
-        print(interaction.user, resume, pdata)
+        plr_game : PlayerGameData = await self._data_service.getPlayerGameDataFor(userId)
+        plr_stats : PlayerStats = await self._data_service.getPlayerStatsFor(userId)
+
+        # check for a started but incomplete game
+        starting_guesses = []
+        if (plr_game.getLastPlayedGameId() == self._current_game_info.getGameId()) and (not plr_game.isCompleted()) and resume:
+            starting_guesses = plr_game.getGuesses()
+
+        # create and begin game    
+        instance = GameInstance(self._bot, interaction, plr_game, plr_stats, self._logger, self._current_game_info, starting_guesses)
+        self._active_games[userId] = instance
+        await instance.initGame()
     
     async def getUserGameState(self, userId : int) -> PlayerGameState:
         """
@@ -95,17 +111,17 @@ class GameService(Cog, name="game_service"):
             return PlayerGameState.ONGOING # has assigned game instance
         
         # check game data
-        pdata : PlayerGameData = await self._data_service.getPlayerGameDataFor(userId)
+        plr_game : PlayerGameData = await self._data_service.getPlayerGameDataFor(userId)
 
-        if pdata.getLastPlayedGameId() != self._current_game_info.getGameId():
+        if plr_game.getLastPlayedGameId() != self._current_game_info.getGameId():
             return PlayerGameState.NOT_STARTED # never started current game
-        if not pdata.isCompleted():
-            return PlayerGameState.INCOMPLETE # started game earlier but didnt complete
-        elif pdata.isCompleted():
+        if not plr_game.isCompleted():
+            return PlayerGameState.INCOMPLETE # started game but didnt complete
+        elif plr_game.isCompleted():
             return PlayerGameState.COMPLETED # already completed current game
         return PlayerGameState.UNKNOWN # something went wrong
     
-    async def getGameEndEmbed(self) -> Embed:
+    async def _getGameEndEmbed(self) -> Embed:
         embed = Embed(title=self._lang.get('game_end_title'), description=f"{self._lang.get('game_end_description')}\n", color=Colour.red())
         embed.set_footer(text=self._lang.get('game_end_footer').replace('{id}', f'{self._current_game_info.getGameId()}'))
 
@@ -137,12 +153,172 @@ def setup(bot : WordleBot) -> None:
 #####
 #####
 
+# TODO live update message
 class GameInstance():
     """
     A class to create and manage a particular game instance
+
+    Parameters
+    ----------
+    bot: utils.types.WordleBot
+        The bot
+    interaction: nextcord.Interaction
+        The interaction to use for communication with the user
+    plr_data: utils.types.PlayerGameData
+        The user's current game data
+    plr_stats: utils.types.PlayerStats
+        The user's current stats
+    logger: utils.utils.Logger
+        The logger to use for logging
+    current_game_info: utils.types.CurrentGameInfo
+        The bot's current game info
+    starting_guesses: list[str], optional
+        The guesses to already count at the time of starting the game
+    silent_start: bool, optional
+        Whether to avoid informing the player when the game instance is initially created
     """
-    def __init__(self, bot : WordleBot, logger : Logger, answer : str, starting_guesses : list[str] = []):
-        self._bot : WordleBot = bot
-        self._logger : Logger = logger # logger is shared with GameService
-        self._answer = answer
-        self._starting_guesses = starting_guesses
+    def __init__(self,
+                 bot : WordleBot, 
+                 interaction : Interaction, 
+                 plr_data: PlayerGameData, 
+                 plr_stats : PlayerStats, 
+                 logger : Logger, 
+                 current_game_info : CurrentGameInfo, 
+                 starting_guesses : list[str] = [],
+                 silent_start : bool = False
+                 ):
+        
+        self._bot = bot
+        self._last_user_interaction = interaction
+        self._plr_data = plr_data
+        self._plr_stats = plr_stats
+        self._logger = logger # logger is shared with GameService
+        self._current_game_info = current_game_info
+        self._game_id = current_game_info.getGameId()
+        self._answer = current_game_info.getAnswer()
+        self._guesses = starting_guesses
+        self._continued = len(self._guesses) > 0
+        self._ongoing = True
+        self._completed = False
+        self._won = False
+        self._silent_start = silent_start
+        self._last_results_image : io.BytesIO
+        self._plr_data.setLastPlayedGameId(self._game_id)
+    
+    async def _dataSaveCycle(self):
+        self._plr_data.setAnswer(self._answer)
+        self._plr_data.setGuesses(self._guesses)
+        self._plr_data.setCompleted(self._completed)
+        self._plr_data.setWon(self._won)
+
+        if self._completed:
+            self._plr_stats.incrementGamesPlayed()
+            if self._won:
+                self._plr_stats.incrementGamesWon()
+                self._plr_stats.incrementWinstreak()
+            else:
+                self._plr_stats.resetWinStreak()
+    
+    async def initGame(self):
+        await self._dataSaveCycle()
+        if self._silent_start: 
+            return
+        
+        title = "Game Started" if self._continued else "Game Ongoing"
+        embed = Embed(title=title, description="Use /guess to make a guess")
+        embed.set_footer(text=f"Game #{self._game_id}")
+
+        if self._continued:
+            # get results image and convert to send
+            result_image_bytes : bytes = await getUserResultsImageBytes(self._bot, self._guesses, self._answer)
+            result_image = io.BytesIO(result_image_bytes)
+            result_image.seek(0)
+
+            image_file = File(fp=result_image, filename="result.png")
+            await self._last_user_interaction.followup.send(embed=embed, file=image_file)
+        # no available result
+        await self._last_user_interaction.followup.send(embed=embed)
+
+    async def mainLoop(self):
+        await self._dataSaveCycle()
+        
+        embed = createResultsEmbed(self._current_game_info, self._current_game_info.getGameId(), self._guesses, self._completed, self._won, self._answer)
+        # results image
+        result_image_bytes : bytes = await getUserResultsImageBytes(self._bot, self._guesses, self._answer)
+        result_image = io.BytesIO(result_image_bytes)
+        result_image.seek(0)
+        self._last_results_image = result_image
+        # send complete embed
+        await self._last_user_interaction.followup.send(embed=embed, file=File(fp=self._last_results_image, filename="results.png"), ephemeral=True, delete_after=30)
+    
+    async def gameWon(self):
+        self._ongoing = False
+        self._completed = True
+        self._won = True
+        await self._dataSaveCycle()
+
+        embed = createResultsEmbed(self._current_game_info, self._current_game_info.getGameId(), self._guesses, self._completed, self._won, self._answer)
+        await self._last_user_interaction.followup.send(embed=embed, file=File(fp=self._last_results_image, filename="results.png"), ephemeral=True, delete_after=30)
+    
+    async def gameLost(self):
+        self._ongoing = False
+        self._completed = True
+        self._won = False
+        await self._dataSaveCycle()
+        
+        embed = createResultsEmbed(self._current_game_info, self._current_game_info.getGameId(), self._guesses, self._completed, self._won, self._answer)
+        await self._last_user_interaction.followup.send(embed=embed, file=File(fp=self._last_results_image, filename="results.png"), ephemeral=True, delete_after=30)
+
+    async def validateGuess(self, interaction : Interaction, guess : str, allowed_guesses : list[str]):
+        self._last_user_interaction = interaction
+        guess = guess.upper()
+
+        # valid guess?
+        if len(guess) != 5:
+            await interaction.followup.send("Your guess must contain 5 letters!", ephemeral=True, delete_after=10)
+            return
+        for ch in guess:
+            if ch not in string.ascii_uppercase:
+                await interaction.followup.send("Your guess must only contain alphabets!", ephemeral=True, delete_after=10)
+                return
+        
+        # check against allowed guesses
+        if guess.lower() not in allowed_guesses:
+            await interaction.followup.send(f"**{guess}** is not a valid word!", ephemeral=True, delete_after=10)
+            return
+        
+        # already guessed this word?
+        if guess in self._guesses:
+            await interaction.followup.send(f"You have already guessed **{guess}**!", ephemeral=True, delete_after=10)
+            return
+        
+        ### GUESS IS VALID
+        self._guesses.append(guess)
+        await self.mainLoop()
+        
+        # check win
+        if guess == self._answer:
+            self._logger.debug(f"{interaction.user} guessed the word correctly.")
+            await interaction.followup.send("You guessed the word correctly!", ephemeral=True, delete_after=5)
+            await self.gameWon()
+            return
+        
+        # out of guesses?
+        if len(self._guesses) >= 6:
+            await interaction.followup.send("You are out of guesses!", ephemeral=True, delete_after=5)
+            await self.gameLost()
+            return
+        
+        await interaction.followup.send(f"You guessed {guess}.", ephemeral=True, delete_after=5)
+        
+    async def terminate(self, reason : str = "Unspecified"):
+        self._ongoing = False
+        self._won = False
+        self._completed = False
+        await self._dataSaveCycle()
+
+        embed = Embed(title="Oops!", color=Colour.red())
+        embed.set_footer(text=f"Game #{self._current_game_info.gameId}")
+        embed.add_field(name="Game Terminated", value=f"This game has been **terminated!**\nReason: {reason}")
+        
+        await self._last_user_interaction.followup.send(embed=embed, ephemeral=True, delete_after=30)

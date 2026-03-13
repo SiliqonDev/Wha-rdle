@@ -52,7 +52,7 @@ class DataService(Cog, name="data_service"):
         # all done and dusted
         self._logger.debug("Cache initialised", printToConsole=True)
     
-    @tasks.loop(seconds=120)
+    @tasks.loop(seconds=60)
     async def _autosave(self) -> None:
         """
         autosaves data to protect against crashes
@@ -117,7 +117,7 @@ class DataService(Cog, name="data_service"):
         value: bool
             True if any data is present, else False
         """
-        return self._cache.exists('player_game_data', userId) 
+        return self._cache.exists('player_game_data', userId)
     
     ###
     ### GETTERS

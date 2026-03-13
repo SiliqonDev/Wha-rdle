@@ -1,3 +1,4 @@
+from PIL import Image
 import nextcord, json, inspect, os, signal
 from nextcord import Activity, ActivityType
 from os.path import isfile, join
@@ -43,6 +44,9 @@ config.set("cwd", cwd)
 config.set("log_file_path", log_file_path)
 
 _logger.debug_mode = config.get('debug_mode')
+
+# cache converted avatar mask
+avatar_mask = Image.open(f"{cwd}/assets/images/avatar-mask.png").resize((256,256)).convert('L')
 
 # load bot lang
 lang = None
@@ -91,29 +95,21 @@ activity = Activity(name = "Playing Self", type = ActivityType.custom)
 bot = WordleBot(intents=nextcord.Intents.all(), activity=activity)
 bot.config = config
 bot.lang = lang
+bot.avatar_mask = avatar_mask
 load_cogs_from("cogs")
 
 async def main(token):
-    main_task = asyncio.current_task()
-    assert main_task is not None
-    loop = asyncio.get_running_loop()
-
-    def stop_main(sig: Literal[signal.Signals.SIGINT, signal.Signals.SIGTERM]):
-        _logger.warning("Detected {sig.name}, attempting graceful exit.", printToConsole=True)
-        main_task.cancel()
-
-    for sig in (signal.SIGINT, signal.SIGTERM):
-        loop.add_signal_handler(sig, lambda sig=sig: stop_main(sig))
-
     try:
         await bot.start(token)
-    except asyncio.CancelledError:
-        _logger.warning("Main task cancelled.", printToConsole=True)
+    except (asyncio.CancelledError, KeyboardInterrupt):
+        _logger.warning("Detected shutdown, attempting graceful exit.", printToConsole=True)
     except Exception as e:
         _logger.error(f"Error while attempting to start the bot", printToConsole=True)
         _logger.exception(e)
     finally:
         await graceful_exit()
+        if not bot.is_closed():
+            await bot.close()
 
 async def graceful_exit():
     _logger.info("Saving all data...", printToConsole=True)

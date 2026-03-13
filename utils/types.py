@@ -1,4 +1,5 @@
 from typing import Any
+from PIL.Image import Image
 from nextcord import TextChannel
 from nextcord.ext import commands
 from enum import Enum
@@ -9,6 +10,9 @@ class WordleBot(commands.Bot):
         self.config : Config
         self.lang : Config
         self.alerts_channel : TextChannel
+        self.avatar_mask : Image
+        self.image_res_factor : int = 100
+        self.avatar_cache : dict = {}
 
 class Config:
     """
@@ -63,9 +67,10 @@ class CurrentGameInfo:
     def setGameId(self, value : int) -> None: self.gameId = value
     def setAnswer(self, value : str) -> None: self.answer = value
     def setParticipants(self, value : list[int]) -> None: self.participants = value
+    def resetParticipants(self) -> None: self.participants = []
     def setPastWords(self, value : list[str]) -> None: self.past_words = value
 
-    def incrementGameId(self) -> None: self.gameId += 1
+    def incrementGameId(self) -> None: self.gameId = max(0, self.gameId+1)
     def addParticipant(self, userId) -> None:
         self.participants.append(userId)
     
@@ -187,9 +192,9 @@ class PlayerStats:
     def setGamesWon(self, value : int) -> None: self.games_won = value
     def setWinStreak(self, value : int) -> None: self.win_streak = value
 
-    def incrementGamesPlayed(self) -> None: self.games_played += 1
-    def incrementGamesWon(self) -> None: self.games_won += 1
-    def incrementWinstreak(self) -> None: self.win_streak += 1
+    def incrementGamesPlayed(self) -> None: self.games_played = max(0, self.games_played + 1)
+    def incrementGamesWon(self) -> None: self.games_won = max(0, self.games_won + 1)
+    def incrementWinstreak(self) -> None: self.win_streak = max(0, self.win_streak + 1)
     def resetWinStreak(self) -> None: self.win_streak = 0
     
     def bulkUpdate(self, data : dict) -> None:

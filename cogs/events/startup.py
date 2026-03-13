@@ -30,6 +30,10 @@ class StartupEvent(Cog, name="startup_events"):
         game_service : GameService = cast(GameService, self._bot.get_cog("game_service"))
         await game_service.initService()
 
+        # if no game has ever been started, start one
+        if (await data_service.getCurrentGameInfo()).getGameId() <= 0:
+            await game_service.initNewGame()
+
         self._logger.info(f"Started bot as {self._bot.user}", printToConsole=True)
     
 def setup(bot : WordleBot) -> None:
