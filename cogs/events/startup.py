@@ -21,7 +21,7 @@ class StartupEvent(Cog, name="startup_events"):
     
     @Cog.listener()
     async def on_ready(self):
-        self._logger.debug("Starting up!", printToConsole=True)
+        self._logger.debug("Starting up!")
         self._bot.alerts_channel = cast(TextChannel, self._bot.get_channel(self._bot.config.get('alerts_channel_id')))
 
         # manually init services that need it
@@ -32,7 +32,7 @@ class StartupEvent(Cog, name="startup_events"):
 
         # if no game has ever been started, start one
         if (await data_service.getCurrentGameInfo()).getGameId() <= 0:
-            await game_service.initNewGame()
+            await game_service.initNewGame(terminate_ongoing=True, silent=True)
 
         self._logger.info(f"Started bot as {self._bot.user}", printToConsole=True)
     

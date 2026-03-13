@@ -60,7 +60,7 @@ class Logger():
         if printToConsole: self._printToConsole(logging.CRITICAL, *args)
     
     # Log a debug message
-    def debug(self, *args : str, printToConsole : bool = False, **kwargs):
+    def debug(self, *args : str, printToConsole : bool = True, **kwargs):
         if not self.debug_mode: return # debugging is off
         self._log(*args, level=logging.DEBUG, **kwargs)
         if printToConsole: self._printToConsole(logging.DEBUG, *args)

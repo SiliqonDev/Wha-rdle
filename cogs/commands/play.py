@@ -7,7 +7,7 @@ from cogs.services.game import GameService
 
 class PlayCommand(Cog, name="play_command"):
     """
-    A command to let users start a new game of wordle
+    A command to let users start a new game
     """
     def __init__(self, bot : WordleBot) -> None:
         self._bot = bot
@@ -29,15 +29,15 @@ class PlayCommand(Cog, name="play_command"):
 
         match game_state:
             case PlayerGameState.ONGOING:
-                await interaction.response.send_message(self._lang.get("game_already_ongoing"), delete_after=10)
+                await interaction.response.send_message(self._lang.get("game_already_ongoing"), delete_after=10, ephemeral=True)
             case PlayerGameState.UNKNOWN:
-                await interaction.response.send_message(self._lang.get("frontend_error"), delete_after=10)
+                await interaction.response.send_message(self._lang.get("frontend_error"), delete_after=10, ephemeral=True)
             case PlayerGameState.INCOMPLETE:
-                await interaction.response.send_message(self._lang.get("game_already_ongoing"), delete_after=10)
+                await interaction.response.send_message(self._lang.get("game_already_ongoing"), delete_after=10, ephemeral=True)
             case PlayerGameState.COMPLETED:
-                await interaction.response.send_message(self._lang.get("game_already_completed"), delete_after=10)
+                await interaction.response.send_message(self._lang.get("game_already_completed"), delete_after=10, ephemeral=True)
             case PlayerGameState.NOT_STARTED:
-                await interaction.response.defer()
+                await interaction.response.defer(ephemeral=True)
                 await self._game_service.startGameFor(userId, interaction, resume=False)
 
 def setup(bot : WordleBot) -> None:

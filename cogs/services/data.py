@@ -45,23 +45,23 @@ class DataService(Cog, name="data_service"):
             # shutdown bot
             await self._bot.close()
         
-        self._logger.debug("Started up successfully.", printToConsole=True)
+        self._logger.debug("Started up successfully.")
         
         await self._makeDirectories()
         await self._buildCache()
         # all done and dusted
-        self._logger.debug("Cache initialised", printToConsole=True)
+        self._logger.debug("Cache initialised")
     
     @tasks.loop(seconds=60)
     async def _autosave(self) -> None:
         """
         autosaves data to protect against crashes
         """
-        self._logger.info("Beginning autosave.")
+        self._logger.debug("Beginning autosave.")
         await self._savePlayerGameData()
         await self._savePlayerStats()
         await self._saveCurrentGameInfo()
-        self._logger.info("Autosave completed.")
+        self._logger.debug("Autosave completed.")
 
     async def _buildCache(self) -> None:
         """
@@ -93,11 +93,16 @@ class DataService(Cog, name="data_service"):
             The user to register
         """
         if self.userExists(userId): return
+
         # save default data
         data = PlayerGameData(userId)
         stats = PlayerStats(userId)
-        self._cache.put('player_game_data', key=userId, value=data)
-        self._cache.put('player_stats', key=userId, value=stats)
+
+        if not self._cache.exists('player_game_data', userId):
+            self._cache.put('player_game_data', key=userId, value=data)
+        if not self._cache.exists('player_stats', userId):
+            self._cache.put('player_stats', key=userId, value=stats)
+
         await self._savePlayerGameDataFor(userId, data)
         await self._savePlayerStatsFor(userId, stats)
     
@@ -117,7 +122,7 @@ class DataService(Cog, name="data_service"):
         value: bool
             True if any data is present, else False
         """
-        return self._cache.exists('player_game_data', userId)
+        return self._cache.exists('player_game_data', userId) and self._cache.exists('player_stats', userId)
     
     ###
     ### GETTERS
@@ -395,7 +400,7 @@ class DataService(Cog, name="data_service"):
         possible_answers = []
         with open(f"{self._cwd}/assets/files/allowed-guesses.txt", 'r') as f1:
             for line in f1:
-                allowed_guesses.append(line.strip())
+                allowed_guesses.append(line.strip().upper())
         with open(f"{self._cwd}/assets/files/possible-answers.txt", 'r') as f2:
             for line in f2:
                 possible_answers.append(line.strip())

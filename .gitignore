@@ -1,6 +1,7 @@
 # for sharing the bot code
 temp
 data/*.db
+data/*.db-journal
 logs
 config.json
 lang.json

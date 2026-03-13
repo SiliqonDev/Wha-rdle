@@ -1,18 +1,35 @@
 from typing import Any
-from PIL.Image import Image
 from nextcord import TextChannel
 from nextcord.ext import commands
 from enum import Enum
 
 class WordleBot(commands.Bot):
+    """
+    Wordle bot instance
+
+    Properties
+    ----------
+    config : utils.types.Config
+        The bot config to use
+    lang : utils.types.Config
+        The lang data to use
+    alerts_channel : nextcord.TextChannel
+        The channel to send all alerts to
+    image_res_factor : int
+        The factor by which to multiply all images' resolutions
+    avatar_cache: dict
+        A cache to store player avatar images to avoid fetching every time
+    misc_data : dict
+        A way to store any misc data
+    """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.config : Config
         self.lang : Config
         self.alerts_channel : TextChannel
-        self.avatar_mask : Image
-        self.image_res_factor : int = 100
+        self.image_res_factor : int = 1
         self.avatar_cache : dict = {}
+        self.misc_data : dict = {}
 
 class Config:
     """
@@ -71,8 +88,10 @@ class CurrentGameInfo:
     def setPastWords(self, value : list[str]) -> None: self.past_words = value
 
     def incrementGameId(self) -> None: self.gameId = max(0, self.gameId+1)
-    def addParticipant(self, userId) -> None:
+    def addParticipant(self, userId : int) -> None:
+        if self.hasParticipant(userId): return
         self.participants.append(userId)
+    def hasParticipant(self, userId : int) -> bool: return userId in self.participants
     
     def bulkUpdate(self, data : dict) -> None:
         """
@@ -218,7 +237,7 @@ class PlayerStats:
 
 class PlayerGameState(Enum):
     UNKNOWN = "UNKNOWN"
-    NOT_STARTED = "NOT_STARTED"
-    ONGOING = "ONGOING"
-    INCOMPLETE = "INCOMPLETE"
-    COMPLETED = "COMPLETED"
+    NOT_STARTED = "NOT_STARTED" # hasnt started current game
+    ONGOING = "ONGOING" # is playing current game
+    INCOMPLETE = "INCOMPLETE" # started current game but didnt finish
+    COMPLETED = "COMPLETED" # already played current game

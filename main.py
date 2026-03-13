@@ -1,8 +1,8 @@
 from PIL import Image
-import nextcord, json, inspect, os, signal
+import nextcord, json, inspect, os
 from nextcord import Activity, ActivityType
 from os.path import isfile, join
-from typing import Literal, cast
+from typing import cast
 from dotenv import load_dotenv
 from datetime import datetime
 from pathlib import Path
@@ -42,11 +42,7 @@ except Exception as e:
     exit()
 config.set("cwd", cwd)
 config.set("log_file_path", log_file_path)
-
 _logger.debug_mode = config.get('debug_mode')
-
-# cache converted avatar mask
-avatar_mask = Image.open(f"{cwd}/assets/images/avatar-mask.png").resize((256,256)).convert('L')
 
 # load bot lang
 lang = None
@@ -79,10 +75,13 @@ def load_cog(relative_path : str):
         try:
             # load cog using module path
             bot.load_extension(module_path)
-            _logger.debug(f"Loaded cog: {module_path}", printToConsole=True)
+            _logger.debug(f"Loaded cog: {module_path}")
         except Exception as e:
-            _logger.error(f"Failed to load cog {module_path}", printToConsole=True)
+            _logger.error(f"Failed to load cog {module_path}")
             _logger.exception(e)
+
+# converted avatar mask to use later
+avatar_mask = Image.open(f"{cwd}/assets/images/avatar-mask.png").resize((256,256)).convert('L')
 
 # check token and start bot
 load_dotenv()
@@ -91,11 +90,12 @@ if not token:
     _logger.critical("BOT TOKEN NOT FOUND OR INVALID TOKEN", printToConsole=True)
     exit()
 
-activity = Activity(name = "Playing Self", type = ActivityType.custom)
+activity = Activity(name = "Playing Wordle", type = ActivityType.playing)
 bot = WordleBot(intents=nextcord.Intents.all(), activity=activity)
 bot.config = config
 bot.lang = lang
-bot.avatar_mask = avatar_mask
+bot.image_res_factor = 1
+bot.misc_data['avatar_mask'] = avatar_mask
 load_cogs_from("cogs")
 
 async def main(token):
@@ -129,34 +129,6 @@ if __name__ == "__main__":
 ###
 ### COMMANDS
 ###
-
-@bot.slash_command(description=f"Make a guess in your game of {name}")
-async def guess(interaction : Interaction, guess : str = SlashOption(description="Your guess", required=True)):
-    if interaction.user == None: return
-    userId = interaction.user.id
-
-    # continuing a game from earlier?
-    data = fileHandler.getLastGameDataOf(userId)
-    if (userId not in active_games.keys()) and (not data["completed"]) and (data["id"] == gameHandler.currentGameData["gameId"]):
-        # build new game instance
-        await interaction.response.defer() # prevent webhook token expiration during game
-        instance = gameHandler.GameInstance(bot, interaction, silentStart=True)
-        await instance.initGame()
-        active_games[userId] = instance
-
-    # not continuing past game and no current game is being played
-    if userId not in active_games.keys():
-        await interaction.response.send_message("You do not have an ongoing game! Try using /play", ephemeral=True, delete_after=10)
-        return
-     
-    # current game being played but is completed
-    instance : gameHandler.GameInstance = active_games[userId]
-    if instance.completed:
-        await interaction.response.send_message("You already completed the current game!", ephemeral=True, delete_after=10)
-        return
-    
-    # game currently running and is not completed
-    await instance.validateGuess(interaction, guess)
 
 @bot.slash_command(description="View your last game's progress.")
 async def view(interaction : Interaction):
