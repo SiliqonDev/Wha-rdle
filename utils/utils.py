@@ -1,4 +1,5 @@
 import logging
+from re import S
 from typing import Any
 from datetime import datetime
 from utils.shared_functions import get_traceback, flatten
@@ -8,74 +9,69 @@ class Logger():
                    name : str,
                    filepath : str,
                    level : int = logging.INFO,
-                   print_level : int = logging.INFO,
+                   print_level : int = logging.ERROR,
                    format : str = "[%(asctime)s][%(name)s][%(levelname)s]: %(message)s",
-                   colors : bool = True,
+                   colored : bool = True,
                    debug_mode : bool = False
     ):
         self.name = name
         self.filepath = filepath
         self.level = level
         self.print_level = print_level
-        self.format = format
-        self.colors = colors
-        self.debug_mode = debug_mode
+        self.colored = colored
+        if debug_mode: 
+            self.level = logging.DEBUG
 
-        self._handler = logging.FileHandler(filepath, encoding="utf-8", mode='a')
-        self._handler.setFormatter(logging.Formatter(format))
+        formatter = logging.Formatter(format)
+        filehandler = logging.FileHandler(filepath, encoding="utf-8", mode='a')
+        consolehandler = logging.StreamHandler()
+
+        filehandler.setFormatter(formatter)
+        filehandler.setLevel(self.level)
+        consolehandler.setFormatter(formatter)
+        consolehandler.setLevel(self.print_level)
+
         self._logger = logging.getLogger(name)
-        self._logger.setLevel(level)
-        self._logger.addHandler(self._handler)
-    
-    def _log(self, *args : str, level : int = 0, printToConsole : bool = False, **kwargs):
+        self._logger.setLevel(min(self.level, self.print_level))
+        self._logger.addHandler(filehandler)
+        self._logger.addHandler(consolehandler)
+        
+    def _log(self, *args : str, level : int, force_print : bool = False, **kwargs):
         msg = " ".join(str(arg) for arg in args)
+        self._logger.log(level, msg, **kwargs)
 
-        # level changed?
-        logLevel = self.level
-        if level:
-            logLevel = level
-        # write log
-        self._logger.log(logLevel, msg, **kwargs)
-        if printToConsole:
+        if force_print and level < self.print_level:
             self._printToConsole(level, msg)
     
+    # Log a debug message
+    def debug(self, *args : str, **kwargs):
+        self._log(*args, level=logging.DEBUG, **kwargs)
+
     # Log an info message
-    def info(self, *args : str, printToConsole : bool = False, **kwargs):
-        self._log(*args, level=logging.INFO, **kwargs)
-        if printToConsole: self._printToConsole(logging.INFO, *args)
+    def info(self, *args : str, force_print : bool = False, **kwargs):
+        self._log(*args, level=logging.INFO, force_print=force_print, **kwargs)
 
     # Log a warning message
-    def warning(self, *args : str, printToConsole : bool = False, **kwargs):
-        self._log(*args, level=logging.WARNING, **kwargs)
-        if printToConsole: self._printToConsole(logging.WARNING, *args)
+    def warning(self, *args : str, force_print : bool = False, **kwargs):
+        self._log(*args, level=logging.WARNING, force_print=force_print, **kwargs)
 
     # Log an error message
-    def error(self, *args : str, printToConsole : bool = False, **kwargs):
-        self._log(*args, level=logging.ERROR, **kwargs)
-        if printToConsole: self._printToConsole(logging.ERROR, *args)
-    
-    # Log a critical message
-    def critical(self, *args : str, printToConsole : bool = False, **kwargs):
-        self._log(*args, level=logging.CRITICAL, **kwargs)
-        if printToConsole: self._printToConsole(logging.CRITICAL, *args)
-    
-    # Log a debug message
-    def debug(self, *args : str, printToConsole : bool = True, **kwargs):
-        if not self.debug_mode: return # debugging is off
-        self._log(*args, level=logging.DEBUG, **kwargs)
-        if printToConsole: self._printToConsole(logging.DEBUG, *args)
-    
+    def error(self, *args : str, force_print : bool = False, **kwargs):
+        self._log(*args, level=logging.ERROR, force_print=force_print, **kwargs)
+
     # Log an exception
     def exception(self, exception: Exception, **kwargs):
         self._logger.error(get_traceback(exception), **kwargs)
-        if self.print_level <= logging.ERROR:
-            print(get_traceback(exception))
+
+    # Log a critical message
+    def critical(self, *args : str, **kwargs):
+        self._log(*args, level=logging.CRITICAL, **kwargs)
     
     # Log directly to console 
     def _printToConsole(self, level, msg):
         msg = f"[{datetime.now().strftime('%H:%M:%S')}][{self.name.upper()}][{logging.getLevelName(level)}]: {msg}"
         
-        if self.colors:
+        if self.colored:
             if level == logging.WARNING:
                 msg = f"\033[0;33m{msg}\033[0m" # Yellow
                 
@@ -142,7 +138,6 @@ class Cache:
             # successfully found location
             curLoc[key] = value  
         except Exception as e:
-            self._logger.error(f"Invalid Cache.set() operation to path {path}")
             self._logger.exception(e)
 
     def get(self, *path : str | int | list[str | int] | tuple[str | int]) -> Any | None:
@@ -175,7 +170,6 @@ class Cache:
             # successfully found
             return curLoc
         except Exception as e:
-            self._logger.error(f"Invalid Cache.get() operation for path {path}")
             self._logger.exception(e)
             return None
     

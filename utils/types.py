@@ -34,26 +34,36 @@ class WordleBot(commands.Bot):
 class Config:
     """
     a class to streamline bot configuration data access
+
+    Parameters
+    ----------
+    config : dict
+        The bot's config data
     """
     def __init__(self, config : dict):
-        """
-        Parameters
-        ----------
-        config : dict
-            The bot's config data
-        """
-        self.config = config
+        self._config = config
     
     def set(self, key : str, value : Any) -> None:
-        self.config[key] = value
+        self._config[key] = value
     def get(self, key : str) -> Any:
-        if key in self.config.keys():
-            return self.config[key]
+        if key in self._config.keys():
+            return self._config[key]
         return None
 
 class CurrentGameInfo:
     """
     a class to manage data for internal use
+
+    Parameters
+    ----------
+    gameId : int, optional
+        The id of the current ongoing game or last played game
+    answer : str, optional
+        The answer for the current ongoing game or last played game
+    participants: list[int], optional
+        A list of user IDs of users that have played this game
+    past_words : list[str], optional
+        A record of past game answers
     """
     def __init__(self,
                  gameId : int = 0,
@@ -61,37 +71,27 @@ class CurrentGameInfo:
                  participants : list[int] = [],
                  past_words : list[str] = []
                 ):
-        """
-        Parameters
-        ----------
-        gameId : int, optional
-            The id of the current ongoing game or last played game
-        answer : str, optional
-            The answer for the current ongoing game or last played game
-        past_words : list[str], optional
-            A record of past game answers
-        """
-        self.gameId = gameId
-        self.answer = answer
-        self.participants = participants
-        self.past_words = past_words
+        self._gameId = gameId
+        self._answer = answer
+        self._participants = participants
+        self._past_words = past_words
 
-    def getGameId(self) -> int: return self.gameId
-    def getAnswer(self) -> str: return self.answer
-    def getParticipants(self) -> list[int]: return self.participants
-    def getPastWords(self) -> list[str]: return self.past_words
+    def getGameId(self) -> int: return self._gameId
+    def getAnswer(self) -> str: return self._answer
+    def getParticipants(self) -> list[int]: return self._participants
+    def getPastWords(self) -> list[str]: return self._past_words
 
-    def setGameId(self, value : int) -> None: self.gameId = value
-    def setAnswer(self, value : str) -> None: self.answer = value
-    def setParticipants(self, value : list[int]) -> None: self.participants = value
-    def resetParticipants(self) -> None: self.participants = []
-    def setPastWords(self, value : list[str]) -> None: self.past_words = value
+    def setGameId(self, value : int) -> None: self._gameId = value
+    def setAnswer(self, value : str) -> None: self._answer = value
+    def setParticipants(self, value : list[int]) -> None: self._participants = value
+    def resetParticipants(self) -> None: self._participants = []
+    def setPastWords(self, value : list[str]) -> None: self._past_words = value
 
-    def incrementGameId(self) -> None: self.gameId = max(0, self.gameId+1)
+    def incrementGameId(self) -> None: self._gameId = max(0, self._gameId+1)
     def addParticipant(self, userId : int) -> None:
         if self.hasParticipant(userId): return
-        self.participants.append(userId)
-    def hasParticipant(self, userId : int) -> bool: return userId in self.participants
+        self._participants.append(userId)
+    def hasParticipant(self, userId : int) -> bool: return userId in self._participants
     
     def bulkUpdate(self, data : dict) -> None:
         """
@@ -109,12 +109,25 @@ class CurrentGameInfo:
         keys = ['gameId', 'answer', 'participants', 'past_words']
         # check for each key and update if present
         for key in keys:
-            command = f"if '{key}' in data.keys(): self.{key} = data['{key}']"
+            command = f"if '{key}' in data.keys(): self._{key} = data['{key}']"
             exec(command)
 
 class PlayerGameData:
     """
     a class to manage the current available game data for a user
+
+    Parameters
+    ----------
+    userId : int
+        The user's discord ID
+    guesses : list[str], optional
+        A list of guesses made in the last game
+    completed : bool, optional
+        Whether or not the game had ended
+    won : bool, optional
+        Whether or not the user had won the game
+    answer: str, optional
+        The correct answer in that game
     """
     def __init__(self, userId: int, 
                  last_played_game_id : int = -1,
@@ -123,39 +136,25 @@ class PlayerGameData:
                  won : bool = False, 
                  answer : str = ""
                 ):
-        """
-        Parameters
-        ----------
-        userId : int
-            The user's discord ID
-        guesses : list[str], optional
-            A list of guesses made in the last game
-        completed : bool, optional
-            Whether or not the game had ended
-        won : bool, optional
-            Whether or not the user had won the game
-        answer: str, optional
-            The correct answer in that game
-        """
-        self.userId = userId
-        self.last_played_game_id = last_played_game_id
-        self.guesses = guesses
-        self.completed = completed
-        self.won = won
-        self.answer = answer
+        self._userId = userId
+        self._last_played_game_id = last_played_game_id
+        self._guesses = guesses
+        self._completed = completed
+        self._won = won
+        self._answer = answer
     
-    def getLastPlayedGameId(self) -> int: return self.last_played_game_id
-    def getUserId(self) -> int: return self.userId
-    def getGuesses(self) -> list[str]: return self.guesses
-    def isCompleted(self) -> bool: return self.completed
-    def isWon(self) -> bool: return self.won
-    def getAnswer(self) -> str: return self.answer
+    def getLastPlayedGameId(self) -> int: return self._last_played_game_id
+    def getUserId(self) -> int: return self._userId
+    def getGuesses(self) -> list[str]: return self._guesses
+    def isCompleted(self) -> bool: return self._completed
+    def isWon(self) -> bool: return self._won
+    def getAnswer(self) -> str: return self._answer
 
-    def setLastPlayedGameId(self, value : int) -> None: self.last_played_game_id = value
-    def setGuesses(self, value: list[str]) -> None: self.guesses = value
-    def setCompleted(self, value: bool) -> None: self.completed = value
-    def setWon(self, value : bool) -> None: self.won = value
-    def setAnswer(self, value : str) -> None: self.answer = value 
+    def setLastPlayedGameId(self, value : int) -> None: self._last_played_game_id = value
+    def setGuesses(self, value: list[str]) -> None: self._guesses = value
+    def setCompleted(self, value: bool) -> None: self._completed = value
+    def setWon(self, value : bool) -> None: self._won = value
+    def setAnswer(self, value : str) -> None: self._answer = value 
     
     def bulkUpdate(self, data : dict) -> None:
         """
@@ -173,48 +172,48 @@ class PlayerGameData:
         keys = ['last_played_game_id', 'guesses', 'completed', 'won', 'answer']
         # check for each key and update if present
         for key in keys:
-            command = f"if '{key}' in data.keys(): self.{key} = data['{key}']"
+            command = f"if '{key}' in data.keys(): self._{key} = data['{key}']"
             exec(command)
 
 class PlayerStats:
     """
-    a class to manage the current stats for a user
+    A class to store and manage the current stats of a user
+    
+    Parameters
+    ----------
+    userId : int
+        The user's discord ID
+    games_played : int, optional
+        The number of games played in total
+    games_won : int, optional
+        The number of games won
+    win_streak : int, optional
+        The current win streak
     """
-    def __init__(self, userId: int, 
+    def __init__(self, 
+                 userId: int, 
                  games_played : int = 0,
                  games_won : int = 0,
                  win_streak : int = 0
                 ):
-        """
-        Parameters
-        ----------
-        userId : int
-            The user's discord ID
-        games_played : int, optional
-            The number of games played in total
-        games_won : int, optional
-            The number of games won
-        win_streak : int, optional
-            The current win streak
-        """
-        self.userId = userId
-        self.games_played = games_played
-        self.games_won = games_won
-        self.win_streak = win_streak
+        self._userId = userId
+        self._games_played = games_played
+        self._games_won = games_won
+        self._win_streak = win_streak
     
-    def getUserId(self) -> int: return self.userId
-    def getGamesPlayed(self) -> int: return self.games_played
-    def getGamesWon(self) -> int: return self.games_won
-    def getWinStreak(self) -> int: return self.win_streak
+    def getUserId(self) -> int: return self._userId
+    def getGamesPlayed(self) -> int: return self._games_played
+    def getGamesWon(self) -> int: return self._games_won
+    def getWinStreak(self) -> int: return self._win_streak
     
-    def setGamesPlayed(self, value : int) -> None: self.games_played = value
-    def setGamesWon(self, value : int) -> None: self.games_won = value
-    def setWinStreak(self, value : int) -> None: self.win_streak = value
-
-    def incrementGamesPlayed(self) -> None: self.games_played = max(0, self.games_played + 1)
-    def incrementGamesWon(self) -> None: self.games_won = max(0, self.games_won + 1)
-    def incrementWinstreak(self) -> None: self.win_streak = max(0, self.win_streak + 1)
-    def resetWinStreak(self) -> None: self.win_streak = 0
+    def setGamesPlayed(self, value : int) -> None: self._games_played = value
+    def setGamesWon(self, value : int) -> None: self._games_won = value
+    def setWinStreak(self, value : int) -> None: self._win_streak = value
+    def resetWinStreak(self) -> None: self._win_streak = 0
+    
+    def incrementGamesPlayed(self) -> None: self._games_played = max(0, self._games_played + 1)
+    def incrementGamesWon(self) -> None: self._games_won = max(0, self._games_won + 1)
+    def incrementWinstreak(self) -> None: self._win_streak = max(0, self._win_streak + 1)
     
     def bulkUpdate(self, data : dict) -> None:
         """
@@ -232,7 +231,7 @@ class PlayerStats:
         keys = ['games_played', 'games_won', 'win_streak']
         # check for each key and update if present
         for key in keys:
-            command = f"if '{key}' in data.keys(): self.{key} = data['{key}']"
+            command = f"if '{key}' in data.keys(): self._{key} = data['{key}']"
             exec(command)
 
 class PlayerGameState(Enum):

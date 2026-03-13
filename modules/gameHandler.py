@@ -234,6 +234,6 @@ async def endCurrentGame(bot : commands.Bot, interaction : Interaction, startNew
     
     # send alert
     if interaction: await interaction.send("Command executed.", ephemeral=True, delete_after=5)
-    await channel.send(embed=embed, file=File(f"{shared_functions.path_to_bot}/temp/images/combined-result-new.png", "combined-results.png"))
+    await channel.send(embed=embed, file=File(f"{shared_functions.path_to_bot}/temp/images/combined-result-new.png", "combined-results.webp"))
 
     

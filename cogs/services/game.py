@@ -32,10 +32,10 @@ class GameService(Cog, name="game_service"):
     @tasks.loop(seconds=5)
     async def cleanup_loop(self):
         """
-        Cleans up all completed games
+        Cleans up all finished games
         """
         for userId, instance in self._active_games.items():
-            if instance.completed:
+            if instance.finished:
                 del self._active_games[userId]
 
     async def initService(self) -> None:
@@ -91,7 +91,7 @@ class GameService(Cog, name="game_service"):
     
         return "SUCCESS"
 
-    async def startGameFor(self, userId : int, interaction : Interaction, resume : bool = False, silent_start : bool = False) -> None:
+    async def startGameFor(self, userId : int, interaction : Interaction, resumed : bool = False, silent_start : bool = False) -> None:
         """
         Starts a new game for a user\n
         If data for a previous incomplete game exists and is playable, continues that game
@@ -105,19 +105,27 @@ class GameService(Cog, name="game_service"):
         resume : bool, optional
             Resume the last played game (if same as current) if True, else start new
         """
+        self._logger.debug(f"Attempting to start game for {userId}.")
+        await interaction.followup.send("*Opening game...*")
+
         plr_game : PlayerGameData = await self._data_service.getPlayerGameDataFor(userId)
         plr_stats : PlayerStats = await self._data_service.getPlayerStatsFor(userId)
 
         # if resuming current game, account for past guesses
         starting_guesses = []
-        if resume and (userId in self._current_game_info.getParticipants()):
+        if resumed and (userId in self._current_game_info.getParticipants()):
+            self._logger.debug(f"Acknowledge resumed game for {userId}.")
             starting_guesses = plr_game.getGuesses()
 
         # assign instance and begin game    
-        instance = GameInstance(self._bot, interaction, plr_game, plr_stats, self._logger, self._current_game_info, starting_guesses, silent_start)
+        instance = GameInstance(self._bot, self._logger, interaction, 
+                                plr_game, plr_stats, 
+                                self._current_game_info.getGameId(), self._current_game_info.getAnswer(), 
+                                starting_guesses, resumed, silent_start)
         self._active_games[userId] = instance
         self._current_game_info.addParticipant(userId)
         await instance.initGame()
+        self._logger.debug(f"Game instance setup for {userId}.")
     
     async def getUserGameInstance(self, userId : int) -> GameInstance | None:
         """
@@ -183,11 +191,11 @@ class GameService(Cog, name="game_service"):
         for userId in self._current_game_info.getParticipants():
             pdata : PlayerGameData = all_p_data[userId]
             if not pdata.isCompleted():
-                text = self._lang.get('user_did_not_finish_game')
+                text = self._lang.get('user_did_not_finish_game').replace('{user_id}', str(userId))
             else:
                 result = self._lang.get('won') if pdata.isWon() else self._lang.get('lost')
                 text = self._lang.get('user_result_text').replace('{user_id}', str(userId)).replace('{result}', result).replace('{move_count}', f'{len(pdata.getGuesses())}')
-            lines += text
+            lines += text+"\n"
         embed.add_field(name=self._lang.get('game_results_title'), value=lines, inline=False)
         embed.add_field(name="", value=f"*{self._lang.get('new_game_started')}*", inline=False)
 

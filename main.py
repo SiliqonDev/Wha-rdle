@@ -1,3 +1,5 @@
+import logging
+
 from PIL import Image
 import nextcord, json, inspect, os
 from nextcord import Activity, ActivityType
@@ -29,7 +31,7 @@ log_file_path = log_dir / log_file_name
 with open(log_file_path, "w"):
     pass
 
-_logger = Logger("MAIN", str(log_file_path))
+_logger = Logger("MAIN", str(log_file_path), print_level=logging.INFO, debug_mode=True) # always debugging
 
 # load bot config
 config = None
@@ -37,12 +39,21 @@ try:
     with open(f"{cwd}/config.json") as cf:
         config = Config(json.load(cf))
 except Exception as e:
-    _logger.critical("Could not load config file!", printToConsole=True)
+    _logger.critical("Could not load config file!")
     _logger.exception(e)
     exit()
 config.set("cwd", cwd)
 config.set("log_file_path", log_file_path)
-_logger.debug_mode = config.get('debug_mode')
+
+debug_mode = config.get('debug_mode')
+print(f"Debug mode is {"ON" if debug_mode else "OFF"}.")
+
+# workaround for json not having a tuple type
+answer_colors : dict = config.get('answer_colors')
+fixed_answer_colors = {}
+for name, color in answer_colors.items():
+    fixed_answer_colors[name] = tuple(color)
+config.set('answer_colors', fixed_answer_colors)
 
 # load bot lang
 lang = None
@@ -50,7 +61,7 @@ try:
     with open(f"{cwd}/lang.json") as lf:
         lang = Config(json.load(lf))
 except Exception as e:
-    _logger.critical("Could not load lang file!", printToConsole=True)
+    _logger.critical("Could not load lang file!")
     _logger.exception(e)
     exit()
 
@@ -77,7 +88,6 @@ def load_cog(relative_path : str):
             bot.load_extension(module_path)
             _logger.debug(f"Loaded cog: {module_path}")
         except Exception as e:
-            _logger.error(f"Failed to load cog {module_path}")
             _logger.exception(e)
 
 # converted avatar mask to use later
@@ -87,7 +97,7 @@ avatar_mask = Image.open(f"{cwd}/assets/images/avatar-mask.png").resize((256,256
 load_dotenv()
 token = os.getenv("TOKEN")
 if not token:
-    _logger.critical("BOT TOKEN NOT FOUND OR INVALID TOKEN", printToConsole=True)
+    _logger.critical("BOT TOKEN NOT FOUND OR INVALID TOKEN")
     exit()
 
 activity = Activity(name = "Playing Wordle", type = ActivityType.playing)
@@ -102,9 +112,8 @@ async def main(token):
     try:
         await bot.start(token)
     except (asyncio.CancelledError, KeyboardInterrupt):
-        _logger.warning("Detected shutdown, attempting graceful exit.", printToConsole=True)
+        _logger.warning("Detected shutdown, attempting graceful exit.")
     except Exception as e:
-        _logger.error(f"Error while attempting to start the bot", printToConsole=True)
         _logger.exception(e)
     finally:
         await graceful_exit()
@@ -112,11 +121,11 @@ async def main(token):
             await bot.close()
 
 async def graceful_exit():
-    _logger.info("Saving all data...", printToConsole=True)
+    _logger.info("Saving all data...")
     data_service : DataService = cast(DataService, bot.get_cog("data_service"))
     await data_service._autosave()
-    _logger.info("Saved all data.", printToConsole=True)
-    _logger.info("Shutting down... Bye!", printToConsole=True)
+    _logger.info("Saved all data.")
+    _logger.info("Shutting down... Bye!")
 
 if __name__ == "__main__":
     assert token is not None
@@ -158,7 +167,7 @@ async def showall(interaction: Interaction):
         return
 
     resultsImage.save(f"{shared.path_to_bot}/temp/images/combined-result-showall.png")
-    await interaction.response.send_message(file=File(f"{shared.path_to_bot}/temp/images/combined-result-showall.png", "combined-results.png"))
+    await interaction.response.send_message(file=File(f"{shared.path_to_bot}/temp/images/combined-result-showall.png", "combined-results.webp"))
     return
 
 @bot.slash_command(description="View the stats leaderboard")

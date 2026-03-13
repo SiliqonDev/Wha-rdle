@@ -22,23 +22,27 @@ class PlayCommand(Cog, name="play_command"):
     
     @nextcord.slash_command(description=f"Starting playing a new game", guild_ids=[948991434827128863, 1316042324727300109])
     async def testplay(self, interaction : Interaction):
+        """
+        Allowes a user to start playing a game. Resumes past game if incomplete and matches with current live game
+        """
         if interaction.user is None: return
         userId : int = interaction.user.id
+        await interaction.response.defer(ephemeral=True)
 
         game_state : PlayerGameState = await self._game_service.getUserGameState(userId)
-
         match game_state:
             case PlayerGameState.ONGOING:
-                await interaction.response.send_message(self._lang.get("game_already_ongoing"), delete_after=10, ephemeral=True)
+                await interaction.followup.send(self._lang.get("game_already_ongoing"), delete_after=10)
             case PlayerGameState.UNKNOWN:
-                await interaction.response.send_message(self._lang.get("frontend_error"), delete_after=10, ephemeral=True)
+                await interaction.followup.send(self._lang.get("frontend_error"), delete_after=10)
             case PlayerGameState.INCOMPLETE:
-                await interaction.response.send_message(self._lang.get("game_already_ongoing"), delete_after=10, ephemeral=True)
+                # resume past game for user
+                await self._game_service.startGameFor(userId, interaction, resumed=True, silent_start=False)
             case PlayerGameState.COMPLETED:
-                await interaction.response.send_message(self._lang.get("game_already_completed"), delete_after=10, ephemeral=True)
+                await interaction.followup.send(self._lang.get("game_already_completed"), delete_after=10)
             case PlayerGameState.NOT_STARTED:
-                await interaction.response.defer(ephemeral=True)
-                await self._game_service.startGameFor(userId, interaction, resume=False)
+                # start new game for user
+                await self._game_service.startGameFor(userId, interaction, resumed=False, silent_start=False)
 
 def setup(bot : WordleBot) -> None:
     bot.add_cog(PlayCommand(bot))

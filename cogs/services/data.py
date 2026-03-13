@@ -40,7 +40,7 @@ class DataService(Cog, name="data_service"):
             await self._db_interface.connect(self._cwd)
             await self._db_interface.build()
         except Exception as e:
-            self._logger.critical("Failed to connect to database!", printToConsole=True)
+            self._logger.critical("Failed to connect to database!")
             self._logger.exception(e)
             # shutdown bot
             await self._bot.close()
@@ -50,7 +50,7 @@ class DataService(Cog, name="data_service"):
         await self._makeDirectories()
         await self._buildCache()
         # all done and dusted
-        self._logger.debug("Cache initialised")
+        self._logger.debug("Cache built.")
     
     @tasks.loop(seconds=60)
     async def _autosave(self) -> None:

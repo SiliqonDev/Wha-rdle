@@ -28,17 +28,18 @@ class GuessCommand(Cog, name="guess_command"):
     async def testguess(self, interaction : Interaction, guess : str = SlashOption("guess", description="Your guess word", required=True)):
         if interaction.user is None: return
         userId : int = interaction.user.id
+        await interaction.response.defer(ephemeral=True)
 
         game_instance : GameInstance | None = await self._game_service.getUserGameInstance(userId)
         game_state : PlayerGameState = await self._game_service.getUserGameState(userId)
+        
         # no game associated with user
         if game_instance is None:
             if game_state != PlayerGameState.INCOMPLETE:
-                await interaction.response.send_message("No active game was found! Try using /play", ephemeral=True)
+                await interaction.followup.send("No active game was found! Try using /play")
             else:
                 # resume past game for user
-                await interaction.response.defer(ephemeral=True)
-                await self._game_service.startGameFor(userId, interaction, resume=True, silent_start=True)
+                await self._game_service.startGameFor(userId, interaction, resumed=True, silent_start=True)
 
                 game_instance : GameInstance | None = await self._game_service.getUserGameInstance(userId)
                 assert game_instance is not None
@@ -47,16 +48,15 @@ class GuessCommand(Cog, name="guess_command"):
         
         # game is still starting up or is paused
         if not game_instance.ongoing:
-            await interaction.response.send_message("You cannot make a guess right now!", ephemeral=True)
+            await interaction.followup.send("You cannot make a guess right now!")
             return
         
-        # game finished but wasnt cleaned up yet
-        if game_instance.completed:
-            await interaction.response.send_message("This game has already finished!", ephemeral=True)
+        # user finished the game
+        if game_instance._completed:
+            await interaction.followup.send("This game has already finished!")
             return
         
         # everything seems good
-        await interaction.response.defer(ephemeral=True)
         await game_instance.processGuess(interaction, guess, await self._data_service.getAllowedGuesses())
 
 def setup(bot : WordleBot) -> None:
