@@ -1,5 +1,4 @@
 import logging
-from re import S
 from typing import Any
 from datetime import datetime
 from utils.shared_functions import get_traceback, flatten
@@ -19,8 +18,7 @@ class Logger():
         self.level = level
         self.print_level = print_level
         self.colored = colored
-        if debug_mode: 
-            self.level = logging.DEBUG
+        self.setDebugMode(debug_mode)
 
         formatter = logging.Formatter(format)
         filehandler = logging.FileHandler(filepath, encoding="utf-8", mode='a')
@@ -35,7 +33,12 @@ class Logger():
         self._logger.setLevel(min(self.level, self.print_level))
         self._logger.addHandler(filehandler)
         self._logger.addHandler(consolehandler)
-        
+    
+    def setDebugMode(self, debug : bool):
+        if debug:
+            self.level = logging.DEBUG
+        self.debug_mode = debug
+
     def _log(self, *args : str, level : int, force_print : bool = False, **kwargs):
         msg = " ".join(str(arg) for arg in args)
         self._logger.log(level, msg, **kwargs)

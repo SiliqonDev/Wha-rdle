@@ -31,7 +31,7 @@ log_file_path = log_dir / log_file_name
 with open(log_file_path, "w"):
     pass
 
-_logger = Logger("MAIN", str(log_file_path), print_level=logging.INFO, debug_mode=True) # always debugging
+_logger = Logger("MAIN", str(log_file_path), print_level=logging.INFO)
 
 # load bot config
 config = None
@@ -46,7 +46,8 @@ config.set("cwd", cwd)
 config.set("log_file_path", log_file_path)
 
 debug_mode = config.get('debug_mode')
-print(f"Debug mode is {"ON" if debug_mode else "OFF"}.")
+_logger.setDebugMode(debug_mode)
+_logger.info(f"Debug mode is {"ON" if debug_mode else "OFF"}.")
 
 # workaround for json not having a tuple type
 answer_colors : dict = config.get('answer_colors')

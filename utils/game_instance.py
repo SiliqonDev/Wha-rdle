@@ -52,8 +52,7 @@ class GameInstance():
         self._last_user_interaction = interaction # humble attempt to bypass 15 min webhook expiration
         self._plr_data = plr_data
         self._plr_stats = plr_stats
-        self._logger = logger # copy GameServiceLogger
-        self._logger.name = f"GameInstance({interaction.user.id})"
+        self._logger = Logger(f"GameInstance({interaction.user.id})", logger.filepath, debug_mode=logger.debug_mode)
         self._game_id = game_id
         self._answer = answer
         self._guesses = starting_guesses
@@ -99,7 +98,7 @@ class GameInstance():
             return
         
         # send starting message if not silent
-        title = "Game Started" if self._continued else f"Game {self._game_id}"
+        title = f"Game #{self._game_id}" if self._continued else f"Game Started"
         embed = Embed(title=title, description="Use /guess to make a guess")
         embed.set_footer(text=f"Game #{self._game_id}")
 
@@ -117,11 +116,10 @@ class GameInstance():
         """
         Checks the validity of a guess and runs the necessary processes to account for it in an ongoing game
         """
-        self._logger.debug(f"Processing guess [{guess}].")
-
-        self._last_user_interaction : Interaction = interaction # need new webhook token to avoid 15min limit
         guess = guess.upper()
-
+        self._logger.debug(f"Processing guess [{guess}].")
+        self._last_user_interaction : Interaction = interaction # need new webhook token to avoid 15min limit
+        
         valid_guess = await self._validateGuess(interaction, guess, allowed_guesses)
         if not valid_guess: return # will have been handled in _validateGuess
 
@@ -142,7 +140,6 @@ class GameInstance():
         await self._mainLoop()
         await interaction.send(f"You guessed {guess}", delete_after=5, ephemeral=True)
         
-        self._logger.debug("Guess acknowledged.")
         return
 
     async def _mainLoop(self) -> None:
