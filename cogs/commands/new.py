@@ -22,11 +22,14 @@ class NewCommand(Cog, name="new_command"):
     
     @nextcord.slash_command(description=f"Create and start a new game for users", guild_ids=[948991434827128863, 1316042324727300109])
     async def testnew(self, interaction : Interaction, override : bool = SlashOption("override", "Whether to terminate any ongoing games and force start a new game", default=False)):
+        await interaction.response.defer(ephemeral=True)
+
         reply : Literal["SUCCESS", "NEED_CONFIRMATION"] = await self._game_service.initNewGame(terminate_ongoing=override, silent=False)
         if reply == "NEED_CONFIRMATION" and not override:
-            await interaction.response.send_message(self._lang.get('confirm_override_on_new'), ephemeral=True)
+            await interaction.followup.send(self._lang.get('confirm_override_on_new'))
             return
-        await interaction.response.send_message(self._lang.get('new_game_started'), ephemeral=True, delete_after=10)
+        
+        await interaction.followup.send(self._lang.get('new_game_started'), delete_after=10)
 
 def setup(bot : WordleBot) -> None:
     bot.add_cog(NewCommand(bot))

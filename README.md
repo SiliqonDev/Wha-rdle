@@ -19,6 +19,8 @@ Not the best, not the worst, but it works</br>
 ## Commands:
 - /testplay : start playing the current active game
 - /testguess : make a guess in the current active game
+- /testpeek : peek at your current game progress
+- /testleaderboard : view a leaderboard of all user's stats
 - /testnew : starts a new game for everyone
 
 ## Note:

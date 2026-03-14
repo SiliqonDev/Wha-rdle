@@ -143,26 +143,6 @@ if __name__ == "__main__":
 ### COMMANDS
 ###
 
-@bot.slash_command(description="View your last game's progress.")
-async def view(interaction : Interaction):
-    if interaction.user == None: return
-    userId = interaction.user.id
-
-    data = fileHandler.getLastGameDataOf(userId)
-    gameId = data["id"]
-    if gameId < 0:
-        await interaction.response.send_message("You dont have any past games!", ephemeral=True, delete_after=10)
-        return
-
-    embed = displaysHandler.createResultsEmbed(interaction, data["guesses"], data["completed"], data["won"], True, data["answer"], gameId)
-    if len(data["guesses"]) > 0:
-        await interaction.response.send_message(embed=embed, file=File(f"{shared.path_to_bot}/temp/images/{userId}.png", filename=f"{userId}.png"), ephemeral=True)
-    else:
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-@bot.slash_command(description="View your last game's progress.")
-async def show(interaction: Interaction):
-    await view(interaction)
-
 @bot.slash_command(description="Show everyone's progress on the current game")
 async def showall(interaction: Interaction):
     resultsImage = await displaysHandler.getCombinedResultDisplayImage(bot)
@@ -173,10 +153,4 @@ async def showall(interaction: Interaction):
     resultsImage.save(f"{shared.path_to_bot}/temp/images/combined-result-showall.png")
     await interaction.response.send_message(file=File(f"{shared.path_to_bot}/temp/images/combined-result-showall.png", "combined-results.webp"))
     return
-
-@bot.slash_command(description="View the stats leaderboard")
-async def stats(interaction: Interaction):
-    embeds = displaysHandler.getLeaderboardEmbeds(bot, interaction.user.id)
-    await interaction.send(embed=embeds[0])
-    await interaction.send(embed=embeds[1], ephemeral=True, delete_after=60)
 """

@@ -27,33 +27,32 @@ class GuessCommand(Cog, name="guess_command"):
     @nextcord.slash_command(description=f"Make a guess in your current game", guild_ids=[948991434827128863, 1316042324727300109])
     async def testguess(self, interaction : Interaction, guess : str = SlashOption("guess", description="Your guess word", required=True)):
         if interaction.user is None: return
-        userId : int = interaction.user.id
+        user_id : int = interaction.user.id
         await interaction.response.defer(ephemeral=True)
 
-        game_instance : GameInstance | None = await self._game_service.getUserGameInstance(userId)
-        game_state : PlayerGameState = await self._game_service.getUserGameState(userId)
-        
-        # no game associated with user
-        if game_instance is None:
-            if game_state != PlayerGameState.INCOMPLETE:
-                await interaction.followup.send(self._bot.lang.get("no_active_game_found"))
-            else:
-                # resume past game for user
-                await self._game_service.startGameFor(userId, interaction, resumed=True, silent_start=True)
+        # check player game info
+        pending_game_info : tuple[bool, PlayerGameState] = await self._game_service.userHasPendingGame(user_id)
+        game_state = pending_game_info[1]
 
-                game_instance : GameInstance | None = await self._game_service.getUserGameInstance(userId)
-                assert game_instance is not None
-                await game_instance.processGuess(interaction, guess, await self._data_service.getAllowedGuesses())
+        # no game associated with user
+        if not pending_game_info[0]:
+            await interaction.followup.send(self._bot.lang.get("no_active_game_found"), delete_after=10)
             return
+        
+        # resume past game for user
+        if game_state == PlayerGameState.INCOMPLETE:
+            await self._game_service.startGameFor(user_id, interaction, resumed=True, silent_start=True)
+        game_instance : GameInstance | None = await self._game_service.getUserGameInstance(user_id)     
+        assert game_instance is not None   
         
         # game is still starting up or is paused
         if not game_instance.ongoing:
-            await interaction.followup.send(self._bot.lang.get("cannot_make_guess"))
+            await interaction.followup.send(self._bot.lang.get("cannot_make_guess"), delete_after=10)
             return
         
         # user finished the game
         if game_instance._completed:
-            await interaction.followup.send(self._bot.lang.get("game_already_finished"))
+            await interaction.followup.send(self._bot.lang.get("game_already_finished"), delete_after=10)
             return
         
         # everything seems good

@@ -82,39 +82,39 @@ class DataService(Cog, name="data_service"):
         Path(f"{self._cwd}/temp").mkdir(parents=True, exist_ok=True)
         Path(f"{self._cwd}/logs").mkdir(parents=True, exist_ok=True)
     
-    async def registerUser(self, userId : int) -> None:
+    async def registerUser(self, user_id : int) -> None:
         """
         Sets up default data for a new user in the database\n
         Does nothing if user already exists in database
 
         Parameters
         ----------
-        userId : int
+        user_id : int
             The user to register
         """
-        if self.userExists(userId): return
+        if self.userExists(user_id): return
 
         # save default data
-        data = PlayerGameData(userId)
-        stats = PlayerStats(userId)
+        data = PlayerGameData(user_id)
+        stats = PlayerStats(user_id)
 
-        if not self._cache.exists('player_game_data', userId):
-            self._cache.put('player_game_data', key=userId, value=data)
-        if not self._cache.exists('player_stats', userId):
-            self._cache.put('player_stats', key=userId, value=stats)
+        if not self._cache.exists('player_game_data', user_id):
+            self._cache.put('player_game_data', key=user_id, value=data)
+        if not self._cache.exists('player_stats', user_id):
+            self._cache.put('player_stats', key=user_id, value=stats)
 
-        await self._savePlayerGameDataFor(userId, data)
-        await self._savePlayerStatsFor(userId, stats)
+        await self._savePlayerGameDataFor(user_id, data)
+        await self._savePlayerStatsFor(user_id, stats)
     
     ###
     ### CHECKERS
-    def userExists(self, userId : int) -> bool:
+    def userExists(self, user_id : int) -> bool:
         """
         returns whether the user is present in the database
 
         Parameters
         ----------
-        userId : int
+        user_id : int
             The discord ID of the user to check for
 
         Returns
@@ -122,7 +122,7 @@ class DataService(Cog, name="data_service"):
         value: bool
             True if any data is present, else False
         """
-        return self._cache.exists('player_game_data', userId) and self._cache.exists('player_stats', userId)
+        return self._cache.exists('player_game_data', user_id) and self._cache.exists('player_stats', user_id)
     
     ###
     ### GETTERS
@@ -148,13 +148,13 @@ class DataService(Cog, name="data_service"):
         assert player_data is not None
         return player_data
     
-    async def getPlayerGameDataFor(self, userId : int) -> PlayerGameData:
+    async def getPlayerGameDataFor(self, user_id : int) -> PlayerGameData:
         """
         returns the PlayerGameData object for a user
 
         Parameters
         ----------
-        userId: int
+        user_id: int
             The user's discord ID
 
         Returns
@@ -162,10 +162,10 @@ class DataService(Cog, name="data_service"):
         data: utils.types.PlayerGameData
             The data associated with the user
         """
-        user_data : PlayerGameData | None = self._cache.get(['player_game_data', userId])
+        user_data : PlayerGameData | None = self._cache.get(['player_game_data', user_id])
         if not user_data:
-            await self.registerUser(userId)
-            user_data : PlayerGameData | None = self._cache.get(['player_game_data', userId])
+            await self.registerUser(user_id)
+            user_data : PlayerGameData | None = self._cache.get(['player_game_data', user_id])
         assert user_data is not None
         return user_data
     
@@ -182,13 +182,13 @@ class DataService(Cog, name="data_service"):
         assert player_stats is not None
         return player_stats
     
-    async def getPlayerStatsFor(self, userId : int) -> PlayerStats:
+    async def getPlayerStatsFor(self, user_id : int) -> PlayerStats:
         """
         returns the PlayerStats object of a user
 
         Parameters
         ----------
-        userId: int
+        user_id: int
             The user's discord ID
 
         Returns
@@ -196,10 +196,10 @@ class DataService(Cog, name="data_service"):
         stats: utils.types.PlayerStats
             The stats if found, else None
         """
-        user_stats : PlayerStats | None = self._cache.get(['player_stats', userId])
+        user_stats : PlayerStats | None = self._cache.get(['player_stats', user_id])
         if not user_stats:
-            await self.registerUser(userId)
-            user_stats : PlayerStats | None = self._cache.get(['player_stats', userId])
+            await self.registerUser(user_id)
+            user_stats : PlayerStats | None = self._cache.get(['player_stats', user_id])
         assert user_stats is not None
         return user_stats
 
@@ -251,31 +251,31 @@ class DataService(Cog, name="data_service"):
         """
         self._cache.put(key='current_game_info',value=data)
 
-    def setPlayerGameDataFor(self, userId : int, data : PlayerGameData) -> None:
+    def setPlayerGameDataFor(self, user_id : int, data : PlayerGameData) -> None:
         """
         sets the PlayerGameData object for a specific user
 
         Parameters
         ----------
-        userId: int
+        user_id: int
             The user's discord ID
         data: utils.types.PlayerGameData
             the new PlayerGameData object
         """
-        self._cache.put('player_game_data',key=userId, value=data)
+        self._cache.put('player_game_data',key=user_id, value=data)
     
-    def setPlayerStatsFor(self, userId : int, stats : PlayerStats) -> None:
+    def setPlayerStatsFor(self, user_id : int, stats : PlayerStats) -> None:
         """
         sets the PlayerStats object for a specific user
 
         Parameters
         ----------
-        userId: int
+        user_id: int
             The user's discord ID
         data: utils.types.PlayerStats
             the new PlayerStats object
         """
-        self._cache.put('player_stats', key=userId, value=stats)
+        self._cache.put('player_stats', key=user_id, value=stats)
     
     ###
     ### SAVING
@@ -292,17 +292,17 @@ class DataService(Cog, name="data_service"):
             data = self._cache.get('player_game_data')
             assert data is not None
 
-        for userId, pdata in data.items():
-            await self._savePlayerGameDataFor(userId, pdata, commit=False)
+        for user_id, pdata in data.items():
+            await self._savePlayerGameDataFor(user_id, pdata, commit=False)
         # bulk commit everything
         await self._db_interface.commit()
-    async def _savePlayerGameDataFor(self, userId : int, data : PlayerGameData, commit : bool | None = True) -> None:
+    async def _savePlayerGameDataFor(self, user_id : int, data : PlayerGameData, commit : bool | None = True) -> None:
         """
         Saves given player game data for a specific user
 
         Parameters
         ----------
-        userId: int
+        user_id: int
             The user to save the data for
         data: utils.types.PlayerGameData
             The data to save
@@ -315,10 +315,10 @@ class DataService(Cog, name="data_service"):
         won : bool = data.isWon()
         answer : str = data.getAnswer()
         # insert if new, else update
-        await self._db_interface.execute("INSERT INTO player_game_data (userId, last_played_game_id, guesses, completed, won, answer) "\
-                                        "values(?,?,?,?,?,?) ON CONFLICT(userId) DO UPDATE SET "\
+        await self._db_interface.execute("INSERT INTO player_game_data (user_id, last_played_game_id, guesses, completed, won, answer) "\
+                                        "values(?,?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET "\
                                         "last_played_game_id=excluded.last_played_game_id, guesses=excluded.guesses, completed=excluded.completed, won=excluded.won, answer=excluded.answer",
-                                        userId, last_played_game_id, guesses, completed, won, answer)
+                                        user_id, last_played_game_id, guesses, completed, won, answer)
         if commit: await self._db_interface.commit()
     
     async def _savePlayerStats(self, data : dict[int, PlayerStats] | None = None) -> None:
@@ -334,17 +334,17 @@ class DataService(Cog, name="data_service"):
             data = self._cache.get('player_stats')
             assert data is not None
         
-        for userId, stats in data.items():
-            await self._savePlayerStatsFor(userId, stats, commit=False)
+        for user_id, stats in data.items():
+            await self._savePlayerStatsFor(user_id, stats, commit=False)
         # bulk commit everything
         await self._db_interface.commit()
-    async def _savePlayerStatsFor(self, userId : int, stats : PlayerStats, commit : bool | None = False) -> None:
+    async def _savePlayerStatsFor(self, user_id : int, stats : PlayerStats, commit : bool | None = False) -> None:
         """
         Saves given player stats for a specific user
 
         Parameters
         ----------
-        userId: int
+        user_id: int
             The user to save the data for
         stats: utils.types.PlayerStats
             The stats to save
@@ -355,10 +355,10 @@ class DataService(Cog, name="data_service"):
         games_won : int = stats.getGamesWon()
         win_streak : int = stats.getWinStreak()
         # insert if new, else update
-        await self._db_interface.execute("INSERT INTO player_stats (userId, games_played, games_won, win_streak) "\
+        await self._db_interface.execute("INSERT INTO player_stats (user_id, games_played, games_won, win_streak) "\
                                         "values(?,?,?, ?) ON CONFLICT DO UPDATE SET "\
                                         "games_played=excluded.games_played, games_won=excluded.games_won, win_streak=excluded.win_streak",
-                                        userId, games_played, games_won, win_streak)
+                                        user_id, games_played, games_won, win_streak)
         if commit: await self._db_interface.commit()
     
     async def _saveCurrentGameInfo(self, data : CurrentGameInfo | None = None) -> None:
@@ -375,17 +375,17 @@ class DataService(Cog, name="data_service"):
             assert data is not None
 
         # save
-        gameId : int = data.getGameId()
+        game_id : int = data.getGameId()
         answer : str = data.getAnswer()
         participants : bytes = pickle.dumps(data.getParticipants())
         past_words : bytes = pickle.dumps(data.getPastWords())
 
         # insert if doesn't exist, else update
-        await self._db_interface.execute("INSERT INTO current_game_info (_id, gameId, answer, participants, past_words) "\
+        await self._db_interface.execute("INSERT INTO current_game_info (_id, game_id, answer, participants, past_words) "\
                                         "values(0, ?, ?, ?, ?) "\
                                         "ON CONFLICT(_id) DO UPDATE SET "\
-                                        "gameId=excluded.gameId, answer=excluded.answer, participants=excluded.participants, past_words=excluded.past_words", 
-                                        gameId, answer, participants, past_words)
+                                        "game_id=excluded.game_id, answer=excluded.answer, participants=excluded.participants, past_words=excluded.past_words", 
+                                        game_id, answer, participants, past_words)
         await self._db_interface.commit()
 
     ###
@@ -415,9 +415,9 @@ class DataService(Cog, name="data_service"):
         """
         reply = await self._db_interface.records("SELECT * FROM player_game_data")
         for record in reply:
-            userId, last_played_game_id, guesses, completed, won, answer = record
-            pdata = PlayerGameData(userId, last_played_game_id, pickle.loads(guesses), completed, won, answer)
-            self._cache.put('player_game_data', key=userId, value=pdata)
+            user_id, last_played_game_id, guesses, completed, won, answer = record
+            pdata = PlayerGameData(user_id, last_played_game_id, pickle.loads(guesses), completed, won, answer)
+            self._cache.put('player_game_data', key=user_id, value=pdata)
     
     async def _cachePlayerStats(self) -> None:
         """
@@ -425,10 +425,10 @@ class DataService(Cog, name="data_service"):
         """
         reply = await self._db_interface.records("SELECT * FROM player_stats")
         for record in reply:
-            userId, games_played, games_won, win_streak = record
-            pstats = PlayerStats(userId, games_played, games_won, win_streak)
+            user_id, games_played, games_won, win_streak = record
+            pstats = PlayerStats(user_id, games_played, games_won, win_streak)
 
-            self._cache.put('player_stats', key=userId, value=pstats)
+            self._cache.put('player_stats', key=user_id, value=pstats)
     
     async def _cacheCurrentGameInfo(self):
         """
@@ -441,8 +441,8 @@ class DataService(Cog, name="data_service"):
             await self._cacheCurrentGameInfo()
             return
         
-        _, gameId, answer, participants, past_words = reply
-        data = CurrentGameInfo(gameId, answer, pickle.loads(participants), pickle.loads(past_words))
+        _, game_id, answer, participants, past_words = reply
+        data = CurrentGameInfo(game_id, answer, pickle.loads(participants), pickle.loads(past_words))
         self._cache.put(key='current_game_info', value=data)
 
 def setup(bot : WordleBot) -> None:

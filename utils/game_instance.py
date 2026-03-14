@@ -131,18 +131,18 @@ class GameInstance():
         
         # check win
         if guess == self._answer:
-            await interaction.send(self._bot.lang.get("guess_is_correct"), delete_after=5, ephemeral=True)
+            await interaction.send(self._bot.lang.get("guess_is_correct"), delete_after=10, ephemeral=True)
             await self._gameWon()
             return
         
         # out of guesses?
         if len(self._guesses) >= 6:
-            await interaction.send(self._bot.lang.get("out_of_guesses"), delete_after=5, ephemeral=True)
+            await interaction.send(self._bot.lang.get("out_of_guesses"), delete_after=10, ephemeral=True)
             await self._gameLost()
             return
         
         await self._mainLoop()
-        await interaction.send(self._bot.lang.get("guess_made").replace("{guess}", guess), delete_after=5, ephemeral=True)
+        await interaction.send(self._bot.lang.get("guess_made").replace("{guess}", guess), delete_after=10, ephemeral=True)
         
         return
 
@@ -258,7 +258,7 @@ class GameInstance():
         
         self.ongoing = False
         self._won = False
-        self._completed = True
+        self._completed = False
         await self._dataSaveCycle(affect_stats=False)
         
         embed = Embed(title=self._bot.lang.get("game_terminated_title"), color=Colour.red())

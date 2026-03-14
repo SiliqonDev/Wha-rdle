@@ -56,7 +56,7 @@ class CurrentGameInfo:
 
     Parameters
     ----------
-    gameId : int, optional
+    game_id : int, optional
         The id of the current ongoing game or last played game
     answer : str, optional
         The answer for the current ongoing game or last played game
@@ -66,28 +66,28 @@ class CurrentGameInfo:
         A record of past game answers
     """
     def __init__(self,
-                 gameId : int = 0,
+                 game_id : int = 0,
                  answer : str = "",
                  participants : list[int] = [],
                  past_words : list[str] = []
                 ):
-        self._gameId = gameId
+        self._game_id = game_id
         self._answer = answer
         self._participants = participants
         self._past_words = past_words
 
-    def getGameId(self) -> int: return self._gameId
+    def getGameId(self) -> int: return self._game_id
     def getAnswer(self) -> str: return self._answer
     def getParticipants(self) -> list[int]: return self._participants
     def getPastWords(self) -> list[str]: return self._past_words
 
-    def setGameId(self, value : int) -> None: self._gameId = value
+    def setGameId(self, value : int) -> None: self._game_id = value
     def setAnswer(self, value : str) -> None: self._answer = value
     def setParticipants(self, value : list[int]) -> None: self._participants = value
     def resetParticipants(self) -> None: self._participants = []
     def setPastWords(self, value : list[str]) -> None: self._past_words = value
 
-    def incrementGameId(self) -> None: self._gameId = max(0, self._gameId+1)
+    def incrementGameId(self) -> None: self._game_id = max(0, self._game_id+1)
     def addParticipant(self, userId : int) -> None:
         if self.hasParticipant(userId): return
         self._participants.append(userId)
@@ -103,10 +103,10 @@ class CurrentGameInfo:
             The dictionary to pull data from.
             If a key exists in `data`, 
             it will update the corresponding value internally
-        valid keys:  gameId, answer, participants, past_words
+        valid keys:  game_id, answer, participants, past_words
         """
         
-        keys = ['gameId', 'answer', 'participants', 'past_words']
+        keys = ['game_id', 'answer', 'participants', 'past_words']
         # check for each key and update if present
         for key in keys:
             command = f"if '{key}' in data.keys(): self._{key} = data['{key}']"
@@ -214,6 +214,19 @@ class PlayerStats:
     def incrementGamesPlayed(self) -> None: self._games_played = max(0, self._games_played + 1)
     def incrementGamesWon(self) -> None: self._games_won = max(0, self._games_won + 1)
     def incrementWinstreak(self) -> None: self._win_streak = max(0, self._win_streak + 1)
+
+    def getAggregateScore(self) -> float:
+        """
+        Get an overall score for this user using all stats
+
+        Returns
+        -------
+        score: float
+            The aggregate score for the user
+        """
+        if self._games_played <= 0: return 0 # avoid zero div error
+        score = (self._games_won/self._games_played) + self._win_streak
+        return score
     
     def bulkUpdate(self, data : dict) -> None:
         """
