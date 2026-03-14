@@ -1,5 +1,4 @@
 # for sharing the bot code
-temp
 data/*.db
 data/*.db-journal
 logs

@@ -243,6 +243,7 @@ class GameService(Cog, name="game_service"):
                 text = self._lang.get('user_result_text').replace('{user_id}', str(user_id)).replace('{result}', result).replace('{move_count}', f'{len(pdata.getGuesses())}')
             lines += text+"\n"
         embed.add_field(name=self._lang.get('game_results_title'), value=lines, inline=False)
+        embed.add_field(name="",value="") # spacer
         embed.add_field(name="", value=f"*{self._lang.get('new_game_started')}*", inline=False)
 
         return embed

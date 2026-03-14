@@ -79,7 +79,6 @@ class DataService(Cog, name="data_service"):
         """
         initialises important directories if they do not exist.
         """
-        Path(f"{self._cwd}/temp").mkdir(parents=True, exist_ok=True)
         Path(f"{self._cwd}/logs").mkdir(parents=True, exist_ok=True)
     
     async def registerUser(self, user_id : int) -> None:

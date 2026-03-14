@@ -4,7 +4,7 @@
     
     "opening_game": "Opening game...",
     "cannot_start_game": "You cannot start a new game right now!",
-    "game_already_completed": "You have already completed the current game!\nUse `/show`",
+    "game_already_completed": "You have already completed the current game!\nWait for another one to begin.",
     "game_already_ongoing": "You already have an ongoing game!\nUse `/guess`",
     "no_active_game_found": "No active game was found! Try using `/play`",
     "cannot_make_guess": "You cannot make a guess right now! Please try again in a couple seconds.",
