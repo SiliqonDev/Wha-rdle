@@ -37,7 +37,7 @@ class LeaderboardCommand(Cog, name="leaderboard_command"):
 
             played = stats.getGamesPlayed()
             won = stats.getGamesWon()
-            win_rate = f"{(won/played)*100}%" if played > 0 else "N/A"
+            win_rate = f"{((won/played)*100):.2f}%" if played > 0 else "N/A"
             streak = stats.getWinStreak()
             embed.add_field(name=f"**#{i+1}** {user.display_name}",
                              value=f"{played} Played **/** {won} Won **/** {win_rate} WR **/** {streak} Streak", inline=False)  
