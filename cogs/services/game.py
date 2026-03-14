@@ -72,7 +72,7 @@ class GameService(Cog, name="game_service"):
         
         # terminate all current instances
         for _, instance in self._active_games.items():
-            await instance.terminate("This game has **ended** and a new one has started in it's place.\nYour stats are **NOT** affected by this.")
+            await instance.terminate(self._bot.lang.get("game_terminated_description"))
         self._active_games.clear()
 
         # send out an alert
@@ -106,7 +106,7 @@ class GameService(Cog, name="game_service"):
             Resume the last played game (if same as current) if True, else start new
         """
         self._logger.debug(f"Attempting to start game for {userId}.")
-        await interaction.followup.send("*Opening game...*")
+        await interaction.followup.send(self._bot.lang.get("opening_game"))
 
         plr_game : PlayerGameData = await self._data_service.getPlayerGameDataFor(userId)
         plr_stats : PlayerStats = await self._data_service.getPlayerStatsFor(userId)

@@ -3,6 +3,7 @@ temp
 data/*.db
 data/*.db-journal
 logs
+_junk
 config.json
 lang.json
 *.env

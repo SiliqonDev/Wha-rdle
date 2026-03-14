@@ -1,5 +1,5 @@
+# epic-er tower of imports
 import logging
-
 from PIL import Image
 import nextcord, json, inspect, os
 from nextcord import Activity, ActivityType
@@ -83,13 +83,16 @@ def load_cogs_from(dir_relative_path : str):
             load_cogs_from(file_relative_path)
         
 def load_cog(relative_path : str):
-        module_path = relative_path.replace('/', '.').replace('\\','.')[:-3]
-        try:
-            # load cog using module path
-            bot.load_extension(module_path)
-            _logger.debug(f"Loaded cog: {module_path}")
-        except Exception as e:
-            _logger.exception(e)
+    """
+    loads a particular cog using a file path
+    """
+    module_path = relative_path.replace('/', '.').replace('\\','.')[:-3]
+    try:
+        # load cog using module path
+        bot.load_extension(module_path)
+        _logger.debug(f"Loaded cog: {module_path}")
+    except Exception as e:
+        _logger.exception(e)
 
 # converted avatar mask to use later
 avatar_mask = Image.open(f"{cwd}/assets/images/avatar-mask.png").resize((256,256)).convert('L')

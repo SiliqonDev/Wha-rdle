@@ -24,7 +24,7 @@ class GuessCommand(Cog, name="guess_command"):
         self._game_service = cast(GameService, self._bot.get_cog("game_service"))
         self._data_service = cast(DataService, self._bot.get_cog("data_service"))
     
-    @nextcord.slash_command(description=f"Make a guess in your game", guild_ids=[948991434827128863, 1316042324727300109])
+    @nextcord.slash_command(description=f"Make a guess in your current game", guild_ids=[948991434827128863, 1316042324727300109])
     async def testguess(self, interaction : Interaction, guess : str = SlashOption("guess", description="Your guess word", required=True)):
         if interaction.user is None: return
         userId : int = interaction.user.id
@@ -36,7 +36,7 @@ class GuessCommand(Cog, name="guess_command"):
         # no game associated with user
         if game_instance is None:
             if game_state != PlayerGameState.INCOMPLETE:
-                await interaction.followup.send("No active game was found! Try using /play")
+                await interaction.followup.send(self._bot.lang.get("no_active_game_found"))
             else:
                 # resume past game for user
                 await self._game_service.startGameFor(userId, interaction, resumed=True, silent_start=True)
@@ -48,12 +48,12 @@ class GuessCommand(Cog, name="guess_command"):
         
         # game is still starting up or is paused
         if not game_instance.ongoing:
-            await interaction.followup.send("You cannot make a guess right now!")
+            await interaction.followup.send(self._bot.lang.get("cannot_make_guess"))
             return
         
         # user finished the game
         if game_instance._completed:
-            await interaction.followup.send("This game has already finished!")
+            await interaction.followup.send(self._bot.lang.get("game_already_finished"))
             return
         
         # everything seems good

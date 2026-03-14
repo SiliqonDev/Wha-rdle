@@ -2,10 +2,33 @@
     "bot_display_name": "Wha?-rdle",
     "frontend_error": "There was an internal error while processing your request, please contact the bot owner.",
     
+    "opening_game": "Opening game...",
     "cannot_start_game": "You cannot start a new game right now!",
     "game_already_completed": "You have already completed the current game!\nUse `/show`",
     "game_already_ongoing": "You already have an ongoing game!\nUse `/guess`",
+    "no_active_game_found": "No active game was found! Try using `/play`",
+    "cannot_make_guess": "You cannot make a guess right now! Please try again in a couple seconds.",
+    "game_already_finished": "You have already finished the game!",
 
+    "game_embed_start_title": "Game Started!",
+    "game_embed_start_footer": "Game #{game_id}",
+    "game_embed_resumed_title": "Game #{game_id}",
+    "game_embed_resumed_footer": "Game was resumed.",
+    "game_embed_text": "Use /guess to make a guess.",
+
+    "guess_made": "You guessed  **{guess}**.",
+    "guess_is_correct": "You guessed the word correctly!",
+    "out_of_guesses": "You are out of guesses!",
+    "guess_incorrect_length": "Your guess must contain 5 letters!",
+    "guess_incorrect_character": "You guess must only contain alphabets!",
+    "guess_not_valid": "**{guess}** is not a valid word!",
+    "guess_already_used": "You have already used this word!",
+    
+    "game_terminated_title": "Oops!",
+    "game_terminated_footer": "Game #{game_id}",
+    "game_terminated_subtitle": "Game Terminated",
+    "game_terminated_description": "This game has been **TERMINATED** and a new one has started in it's place.\nYour stats are **NOT** affected by this.",
+    
     "game_end_title": "GAME ENDED!",
     "game_end_description": "The current game has ended!",
     "no_available_results": "No available results.",
@@ -17,5 +40,5 @@
     "game_end_footer": "Game #{id}",
     
     "new_game_started": "A new game has been started!",
-    "confirm_override_on_new": "You are creating a new game for players.\nAny players currently playing will have their games **terminated** and will be marked as **lost**.\nUse **/new confirm=True** to confirm this action"
+    "confirm_override_on_new": "You are creating a new game for players.\nAny players currently playing will have their games **terminated**.\nUse `/new override=True` to confirm this action"
 }
