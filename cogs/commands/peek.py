@@ -34,7 +34,7 @@ class PeekCommand(Cog, name="peek_command"):
         # check for associated game
         pending_game_info : tuple[bool, PlayerGameState] = await self._game_service.userHasPendingGame(user_id)
         if not pending_game_info[0]:
-            await interaction.followup.send(self._bot.lang.get("no_active_game_found"), delete_after=10)
+            await interaction.followup.send(self._lang.get("no_active_game_found"), delete_after=10)
             return
         game_data : PlayerGameData = await self._data_service.getPlayerGameDataFor(user_id)
 

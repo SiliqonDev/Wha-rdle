@@ -72,7 +72,7 @@ class GameService(Cog, name="game_service"):
         
         # terminate all current instances
         for _, instance in self._active_games.items():
-            await instance.terminate(self._bot.lang.get("game_terminated_description"))
+            await instance.terminate(self._lang.get("game_terminated_description"))
         self._active_games.clear()
 
         # send out an alert
@@ -106,7 +106,7 @@ class GameService(Cog, name="game_service"):
             Resume the last played game (if same as current) if True, else start new
         """
         self._logger.debug(f"Attempting to start game for {user_id}.")
-        await interaction.followup.send(self._bot.lang.get("opening_game"))
+        await interaction.followup.send(self._lang.get("opening_game"))
 
         plr_game : PlayerGameData = await self._data_service.getPlayerGameDataFor(user_id)
         plr_stats : PlayerStats = await self._data_service.getPlayerStatsFor(user_id)
@@ -224,7 +224,10 @@ class GameService(Cog, name="game_service"):
             The embed
         """
         embed = Embed(title=self._lang.get('game_end_title'), description=f"{self._lang.get('game_end_description')}\n", color=Colour.red())
-        embed.set_footer(text=self._lang.get('game_end_footer').replace('{id}', f'{self._current_game_info.getGameId()}'))
+        footer : str | None = self._lang.get('game_end_footer')
+        if footer is not None:
+            footer = footer.replace('{id}', f'{self._current_game_info.getGameId()}')
+        embed.set_footer(text=footer)
 
         # no one played
         if len(self._current_game_info.getParticipants()) == 0:
@@ -237,11 +240,15 @@ class GameService(Cog, name="game_service"):
         for user_id in self._current_game_info.getParticipants():
             pdata : PlayerGameData = all_p_data[user_id]
             if not pdata.isCompleted():
-                text = self._lang.get('user_did_not_finish_game').replace('{user_id}', str(user_id))
+                text : str | None = self._lang.get('user_did_not_finish_game')
+                if text is not None:
+                    text = text.replace('{user_id}', str(user_id))
             else:
                 result = self._lang.get('won') if pdata.isWon() else self._lang.get('lost')
-                text = self._lang.get('user_result_text').replace('{user_id}', str(user_id)).replace('{result}', result).replace('{move_count}', f'{len(pdata.getGuesses())}')
-            lines += text+"\n"
+                text : str | None= self._lang.get('user_result_text')
+                if text is not None:
+                    text = text.replace('{user_id}', str(user_id)).replace('{result}', result).replace('{move_count}', f'{len(pdata.getGuesses())}')
+            lines += str(text)+"\n"
         embed.add_field(name=self._lang.get('game_results_title'), value=lines, inline=False)
         embed.add_field(name="",value="") # spacer
         embed.add_field(name="", value=f"*{self._lang.get('new_game_started')}*", inline=False)

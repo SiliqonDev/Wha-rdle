@@ -30,11 +30,14 @@ class StatsCommand(Cog, name="stats_command"):
         played = stats.getGamesPlayed()
         won = stats.getGamesWon()
         win_rate = f"{((won/played)*100):.2f}%" if played > 0 else "N/A"
-        streak = stats.getWinStreak()
+        win_streak = stats.getWinStreak()
 
         embed = Embed(title="Your stats")
-        embed.add_field(name=f"{played} Played **/** {won} Won **/** {win_rate} WR **/** {streak} Streak", value="", inline=False)
-        await interaction.followup.send(embed=embed)  
+        stats_string : str | None = self._lang.get("stats_display_format")
+        if stats_string is not None:
+                stats_string = stats_string.replace('{games_played}', str(played)).replace('{games_won}', str(won)).replace('{win_rate}', win_rate).replace('{win_streak}', str(win_streak))
+        embed.add_field(name=str(stats_string), value="", inline=False)
+        await interaction.followup.send(embed=embed, delete_after=30)  
 
 def setup(bot : WordleBot) -> None:
     bot.add_cog(StatsCommand(bot))

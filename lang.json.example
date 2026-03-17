@@ -2,6 +2,9 @@
     "bot_display_name": "Wha?-rdle",
     "frontend_error": "There was an internal error while processing your request, please contact the bot owner.",
     
+    "new_game_started": "A new game has been started!",
+    "confirm_override_on_new": "You are creating a new game for players.\nAny players currently playing will have their games **terminated**.\nUse `/new override=True` to confirm this action",
+
     "opening_game": "Opening game...",
     "cannot_start_game": "You cannot start a new game right now!",
     "game_already_completed": "You have already completed the current game!\nWait for another one to begin.",
@@ -16,7 +19,7 @@
     "game_embed_resumed_footer": "Game was resumed.",
     "game_embed_text": "Use /guess to make a guess.",
 
-    "guess_made": "You guessed  **{guess}**.",
+    "guess_made": "You guessed **{guess}**.",
     "guess_is_correct": "You guessed the word correctly!",
     "out_of_guesses": "You are out of guesses!",
     "guess_incorrect_length": "Your guess must contain 5 letters!",
@@ -39,6 +42,11 @@
     "game_results_title": "Game Results",
     "game_end_footer": "Game #{id}",
     
-    "new_game_started": "A new game has been started!",
-    "confirm_override_on_new": "You are creating a new game for players.\nAny players currently playing will have their games **terminated**.\nUse `/new override=True` to confirm this action"
+    "stats_embed_title": "Your Stats",
+    "leaderboard_embed_title": "{bot_display_name} Leaderboard",
+    "leaderboard_no_data_title": "No data available.",
+    "leaderboard_no_data_description": "No like seriously, there isn't any.",
+    "leaderboard_embed_footer": "you guys are really bad at this huh",
+    "stats_display_format": "{games_played} Played **/** {games_won} Won **/** {win_rate} WR **/** {win_streak} Streak",
+    "win_rate_not_available": "N/A"
 }

@@ -36,7 +36,7 @@ class GuessCommand(Cog, name="guess_command"):
 
         # no game associated with user
         if not pending_game_info[0]:
-            await interaction.followup.send(self._bot.lang.get("no_active_game_found"), delete_after=10)
+            await interaction.followup.send(self._lang.get("no_active_game_found"), delete_after=10)
             return
         
         # resume past game for user
@@ -47,12 +47,12 @@ class GuessCommand(Cog, name="guess_command"):
         
         # game is still starting up or is paused
         if not game_instance.ongoing:
-            await interaction.followup.send(self._bot.lang.get("cannot_make_guess"), delete_after=10)
+            await interaction.followup.send(self._lang.get("cannot_make_guess"), delete_after=10)
             return
         
         # user finished the game
         if game_instance._completed:
-            await interaction.followup.send(self._bot.lang.get("game_already_finished"), delete_after=10)
+            await interaction.followup.send(self._lang.get("game_already_finished"), delete_after=10)
             return
         
         # everything seems good

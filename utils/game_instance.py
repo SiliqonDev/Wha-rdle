@@ -48,6 +48,7 @@ class GameInstance():
         assert interaction.user is not None
         
         self._bot = bot
+        self._lang = bot.lang
         self._last_user_interaction = interaction # humble attempt to bypass 15 min webhook expiration
         self._plr_data = plr_data
         self._plr_stats = plr_stats
@@ -97,13 +98,13 @@ class GameInstance():
             return
         
         # send starting message if not silent
-        title = (self._bot.lang.get("game_embed_resumed_title") if self._continued 
-                 else self._bot.lang.get("game_embed_start_title")
+        title = (self._lang.get("game_embed_resumed_title") if self._continued 
+                 else str(self._lang.get("game_embed_start_title"))
                  ).replace('{game_id}', str(self._game_id))
-        embed = Embed(title=title, description=self._bot.lang.get("game_embed_text"))
+        embed = Embed(title=title, description=self._lang.get("game_embed_text"))
         embed.set_footer(text=(
-            self._bot.lang.get("game_embed_resumed_footer") if self._continued 
-            else self._bot.lang.get("game_embed_start_footer")
+            self._lang.get("game_embed_resumed_footer") if self._continued 
+            else str(self._lang.get("game_embed_start_footer"))
             ).replace('{game_id}', str(self._game_id)))
 
         # current results image
@@ -131,19 +132,22 @@ class GameInstance():
         
         # check win
         if guess == self._answer:
-            await interaction.send(self._bot.lang.get("guess_is_correct"), delete_after=10, ephemeral=True)
+            await interaction.send(self._lang.get("guess_is_correct"), delete_after=10, ephemeral=True)
             await self._gameWon()
             return
         
         # out of guesses?
         if len(self._guesses) >= 6:
-            await interaction.send(self._bot.lang.get("out_of_guesses"), delete_after=10, ephemeral=True)
+            await interaction.send(self._lang.get("out_of_guesses"), delete_after=10, ephemeral=True)
             await self._gameLost()
             return
         
         await self._mainLoop()
-        await interaction.send(self._bot.lang.get("guess_made").replace("{guess}", guess), delete_after=10, ephemeral=True)
-        
+
+        message : str | None = self._lang.get("guess_made")
+        if message is not None:
+            message = message.replace("{guess}", guess)
+        await interaction.send(content=message, delete_after=10, ephemeral=True)
         return
 
     async def _mainLoop(self) -> None:
@@ -226,24 +230,30 @@ class GameInstance():
         # character count and alphabet check
         if len(guess) != 5:
             self._logger.debug("Guess did not pass length test.")
-            await interaction.followup.send(self._bot.lang.get("guess_incorrect_length"), delete_after=10)
+            await interaction.followup.send(self._lang.get("guess_incorrect_length"), delete_after=10)
             return False
         for ch in guess:
             if ch not in string.ascii_uppercase:
                 self._logger.debug("Guess did not pass symbol test.")
-                await interaction.followup.send(self._bot.lang.get("guess_incorrect_character"), delete_after=10)
+                await interaction.followup.send(self._lang.get("guess_incorrect_character"), delete_after=10)
                 return False
         
         # not an allowed guess
         if guess not in allowed_guesses:
             self._logger.debug("Guess not in word list.")
-            await interaction.followup.send(self._bot.lang.get("guess_not_valid").replace("{guess}", guess), delete_after=10)
+            message : str | None = self._lang.get("guess_not_valid")
+            if message is not None:
+                message = message.replace("{guess}", guess)
+            await interaction.followup.send(content=str(message), delete_after=10)
             return False
         
         # already guessed this word
         if guess in self._guesses:
             self._logger.debug("Guess already used.")
-            await interaction.followup.send(self._bot.lang.get("guess_already_used").replace("{guess}", guess), delete_after=10)
+            message : str | None= self._lang.get("guess_already_used")
+            if message is not None:
+                message = message.replace("{guess}", guess)
+            await interaction.followup.send(content=str(message), delete_after=10)
             return False
         
         ### GUESS IS VALID
@@ -261,9 +271,12 @@ class GameInstance():
         self._completed = False
         await self._dataSaveCycle(affect_stats=False)
         
-        embed = Embed(title=self._bot.lang.get("game_terminated_title"), color=Colour.red())
-        embed.set_footer(text=self._bot.lang.get("game_terminated_footer").replace('{game_id}', str(self._game_id)))
-        embed.add_field(name=self._bot.lang.get("game_terminated_subtitle"), value=reason)
+        embed = Embed(title=self._lang.get("game_terminated_title"), color=Colour.red())
+        footer : str | None = self._lang.get("game_terminated_footer")
+        if footer is not None:
+            footer = footer.replace('{game_id}', str(self._game_id))
+        embed.set_footer(text=footer)
+        embed.add_field(name=str(self._lang.get("game_terminated_subtitle")), value=reason)
         
         await self._last_user_interaction.send(embed=embed, delete_after=30, ephemeral=True)
 

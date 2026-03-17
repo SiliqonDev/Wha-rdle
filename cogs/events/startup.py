@@ -22,7 +22,7 @@ class StartupEvent(Cog, name="startup_events"):
     @Cog.listener()
     async def on_ready(self):
         self._logger.debug("Starting up...")
-        self._bot.alerts_channel = cast(TextChannel, self._bot.get_channel(self._bot.config.get('alerts_channel_id')))
+        self._bot.alerts_channel = cast(TextChannel, self._bot.get_channel(self._config.get('alerts_channel_id')))
 
         # manually init services that need it
         data_service : DataService = cast(DataService, self._bot.get_cog("data_service"))

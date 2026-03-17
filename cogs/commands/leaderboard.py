@@ -27,7 +27,10 @@ class LeaderboardCommand(Cog, name="leaderboard_command"):
         sorted_players : list[tuple[int, PlayerStats]] = await self._game_service.getUsersSortedByStats()
 
         # setup full embed
-        embed = Embed(title=f"{self._bot.lang.get('bot_display_name')} Leaderboard", color=Colour.gold())
+        title : str | None = self._lang.get('leaderboard_embed_title')
+        if title is not None:
+            title = title.replace('{bot_display_name}', self._lang.get('bot_display_name'))
+        embed = Embed(title=title, color=Colour.gold())
         for i in range(len(sorted_players)):
             data = sorted_players[i]
             id = data[0]
@@ -37,15 +40,18 @@ class LeaderboardCommand(Cog, name="leaderboard_command"):
 
             played = stats.getGamesPlayed()
             won = stats.getGamesWon()
-            win_rate = f"{((won/played)*100):.2f}%" if played > 0 else "N/A"
-            streak = stats.getWinStreak()
-            embed.add_field(name=f"**#{i+1}** {user.display_name}",
-                             value=f"{played} Played **/** {won} Won **/** {win_rate} WR **/** {streak} Streak", inline=False)  
+            win_rate = f"{((won/played)*100):.2f}%" if played > 0 else self._lang.get('win_rate_not_available')
+            win_streak = stats.getWinStreak()
+
+            stats_string : str | None = self._lang.get("stats_display_format")
+            if stats_string is not None:
+                stats_string = stats_string.replace('{games_played}', str(played)).replace('{games_won}', str(won)).replace('{win_rate}', win_rate).replace('{win_streak}', str(win_streak))
+            embed.add_field(name=f"**#{i+1}** {user.display_name}", value=str(stats_string), inline=False)  
         # there was no one
         if len(sorted_players) == 0:
-            embed.add_field(name="No data available.", value="*No like seriously, there isn't any.*", inline=False)
+            embed.add_field(name=self._lang.get("leaderboard_no_data_title"), value=f"*{self._lang.get("leaderboard_no_data_description")}*", inline=False)
         embed.add_field(name="",value="",inline=False) # spacer
-        embed.set_footer(text="you guys are really bad at this huh")
+        embed.set_footer(text=self._lang.get("leaderboard_embed_footer"))
 
         await interaction.followup.send(embed=embed)
 

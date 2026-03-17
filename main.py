@@ -125,6 +125,9 @@ async def main(token):
             await bot.close()
 
 async def graceful_exit():
+    """
+    Tries to make sure that all data is saved on shutdown
+    """
     _logger.info("Saving all data...")
     data_service : DataService = cast(DataService, bot.get_cog("data_service"))
     await data_service._autosave()
