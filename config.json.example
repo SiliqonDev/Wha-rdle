@@ -1,0 +1,13 @@
+{
+    "alerts_channel_id": "1234",
+    "admin_ids": [123456789, 987654321],
+
+    "version": "2.0",
+    "debug_mode": false,
+
+    "answer_colors": {
+        "CORRECT": [83, 141, 78],
+        "WRONG": [58, 58, 60],
+        "MAYBE": [181, 159, 59]
+    }
+}
