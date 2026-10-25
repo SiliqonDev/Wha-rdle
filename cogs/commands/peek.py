@@ -31,11 +31,12 @@ class PeekCommand(Cog, name="peek_command"):
         user_id : int = interaction.user.id
         await interaction.response.defer(ephemeral=True)
 
-        # check for associated game
-        pending_game_info : tuple[bool, PlayerGameState] = await self._game_service.userHasPendingGame(user_id)
-        if not pending_game_info[0]:
+        # check current game state
+        current_game_state : PlayerGameState = await self._game_service.getUserGameState(user_id)
+        if current_game_state in [PlayerGameState.UNKNOWN, PlayerGameState.NOT_STARTED]:
             await interaction.followup.send(self._lang.get("no_active_game_found"), delete_after=10)
             return
+            
         game_data : PlayerGameData = await self._data_service.getPlayerGameDataFor(user_id)
 
         # grab result image

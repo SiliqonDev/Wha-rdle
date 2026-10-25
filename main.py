@@ -140,20 +140,3 @@ if __name__ == "__main__":
         asyncio.run(main(token))
     except KeyboardInterrupt:
         pass
-
-"""
-###
-### COMMANDS
-###
-
-@bot.slash_command(description="Show everyone's progress on the current game")
-async def showall(interaction: Interaction):
-    resultsImage = await displaysHandler.getCombinedResultDisplayImage(bot)
-    if not resultsImage: # no current results to show
-        await interaction.response.send_message("There are currently no results to show!", ephemeral=True, delete_after=10)
-        return
-
-    resultsImage.save(f"{shared.path_to_bot}/temp/images/combined-result-showall.png")
-    await interaction.response.send_message(file=File(f"{shared.path_to_bot}/temp/images/combined-result-showall.png", "combined-results.webp"))
-    return
-"""

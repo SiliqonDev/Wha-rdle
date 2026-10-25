@@ -23,6 +23,7 @@ Not the best, not the worst, but it works</br>
 - /testpeek : peek at your current game progress
 - /testleaderboard : view a leaderboard of all user's stats
 - /teststats : view your own stats
+- /testhelp : command to view all commands
 
 ## Note:
 
