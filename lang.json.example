@@ -48,5 +48,17 @@
     "leaderboard_no_data_description": "No like seriously, there isn't any.",
     "leaderboard_embed_footer": "you guys are really bad at this huh",
     "stats_display_format": "{games_played} Played **/** {games_won} Won **/** {win_rate} WR **/** {win_streak} Streak",
-    "win_rate_not_available": "N/A"
+    "win_rate_not_available": "N/A",
+
+    "help_embed_title": "Command List",
+    "help_embed_body": [
+        "`/help` : Opens this menu!",
+        "`/new` : Admin command to start a new game",
+        "`/play` : Start playing in a game",
+        "`/guess` : Make a guess in a game",
+        "`/peek` : View your progress during a game",
+        "`/stats` : View your lifetime stats!",
+        "`/leaderboard` : View the stat leaderboard"
+    ],
+    "help_embed_footer": "Now go play the game!"
 }
