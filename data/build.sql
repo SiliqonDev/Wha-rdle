@@ -23,5 +23,5 @@ CREATE TABLE IF NOT EXISTS current_game_info (
     game_id integer default 0,
     answer char(5) default "",
     participants BLOB, /* all players who participated in this game */
-    past_words BLOB /* words from past words to avoid early repeats */
+    past_words BLOB /* words from past words to avoid early repeats */ /* NOT CURRENTLY IMPLEMENTED */
 );

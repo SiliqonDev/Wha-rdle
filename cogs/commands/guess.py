@@ -24,8 +24,8 @@ class GuessCommand(Cog, name="guess_command"):
         self._game_service = cast(GameService, self._bot.get_cog("game_service"))
         self._data_service = cast(DataService, self._bot.get_cog("data_service"))
     
-    @nextcord.slash_command(description=f"Make a guess in your current game", guild_ids=[948991434827128863, 1316042324727300109])
-    async def testguess(self, interaction : Interaction, guess : str = SlashOption("guess", description="Your guess word", required=True)):
+    @nextcord.slash_command(description=f"Make a guess in your current game", guild_ids=[])
+    async def guess(self, interaction : Interaction, guess : str = SlashOption("guess", description="Your guess word", required=True)):
         if interaction.user is None: return
         user_id : int = interaction.user.id
         await interaction.response.defer(ephemeral=True)

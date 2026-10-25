@@ -20,8 +20,8 @@ class StatsCommand(Cog, name="stats_command"):
         await self._bot.wait_until_ready()
         self._data_service = cast(DataService, self._bot.get_cog("data_service"))
     
-    @nextcord.slash_command(description=f"Create and start a new game for users", guild_ids=[948991434827128863, 1316042324727300109])
-    async def teststats(self, interaction : Interaction):
+    @nextcord.slash_command(description=f"Create and start a new game for users", guild_ids=[])
+    async def stats(self, interaction : Interaction):
         if interaction.user is None: return
         user_id = interaction.user.id
         await interaction.response.defer(ephemeral=True)

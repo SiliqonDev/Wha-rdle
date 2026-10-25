@@ -20,8 +20,8 @@ class NewCommand(Cog, name="new_command"):
         await self._bot.wait_until_ready()
         self._game_service = cast(GameService, self._bot.get_cog("game_service"))
     
-    @nextcord.slash_command(description=f"Create and start a new game for users", guild_ids=[948991434827128863, 1316042324727300109])
-    async def testnew(self, interaction : Interaction, override : bool = SlashOption("override", "Whether to terminate any ongoing games and force start a new game", default=False)):
+    @nextcord.slash_command(description=f"Create and start a new game for users", guild_ids=[])
+    async def new(self, interaction : Interaction, override : bool = SlashOption("override", "Whether to terminate any ongoing games and force start a new game", default=False)):
         await interaction.response.defer(ephemeral=True)
 
         reply : Literal["SUCCESS", "NEED_CONFIRMATION"] = await self._game_service.initNewGame(terminate_ongoing=override, silent=False)

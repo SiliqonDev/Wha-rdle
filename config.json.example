@@ -2,7 +2,7 @@
     "alerts_channel_id": "1234",
     "admin_ids": [123456789, 987654321],
 
-    "version": "beta-0.4",
+    "version": "2.0",
     "debug_mode": false,
 
     "answer_colors": {

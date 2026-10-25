@@ -25,8 +25,8 @@ class PeekCommand(Cog, name="peek_command"):
         self._game_service = cast(GameService, self._bot.get_cog("game_service"))
         self._data_service = cast(DataService, self._bot.get_cog("data_service"))
     
-    @nextcord.slash_command(description=f"Peek your progress in the current game", guild_ids=[948991434827128863, 1316042324727300109])
-    async def testpeek(self, interaction : Interaction):
+    @nextcord.slash_command(description=f"Peek your progress in the current game", guild_ids=[])
+    async def peek(self, interaction : Interaction):
         if interaction.user is None: return
         user_id : int = interaction.user.id
         await interaction.response.defer(ephemeral=True)

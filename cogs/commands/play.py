@@ -20,8 +20,8 @@ class PlayCommand(Cog, name="play_command"):
         await self._bot.wait_until_ready()
         self._game_service = cast(GameService, self._bot.get_cog("game_service"))
     
-    @nextcord.slash_command(description=f"Starting playing a new game", guild_ids=[948991434827128863, 1316042324727300109])
-    async def testplay(self, interaction : Interaction):
+    @nextcord.slash_command(description=f"Starting playing a new game", guild_ids=[])
+    async def play(self, interaction : Interaction):
         """
         Allowes a user to start playing a game. Resumes past game if incomplete and matches with current live game
         """

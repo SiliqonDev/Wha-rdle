@@ -17,16 +17,22 @@ Not the best, not the worst, but it works</br>
 <b>(Bot requires message content and members intent)</b>
 
 ## Commands:
-- /testnew : starts a new game for everyone
-- /testplay : start playing the current active game
-- /testguess : make a guess in the current active game
-- /testpeek : peek at your current game progress
-- /testleaderboard : view a leaderboard of all user's stats
-- /teststats : view your own stats
-- /testhelp : command to view all commands
+
+- /new : starts a new game for everyone
+- /play : start playing the current active game
+- /guess : make a guess in the current active game
+- /peek : peek at your current game progress
+- /leaderboard : view a leaderboard of all user's stats
+- /stats : view your own stats
+- /help : command to view all commands
 
 ## Note:
 
 <b>NOT meant to be used on a large scale without modifications</b><br>
-This is a simple bot and is still in development.</br>
 This is not currently meant to be used in multiple guilds at the same time!
+
+## IDEAS FOR LATER
+
+- Switch out the game end embed for an image instead, more like the actual wordle discord application
+- Add an alerts channel for logging and stuff
+- Bias against rolling recent past words

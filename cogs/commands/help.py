@@ -16,8 +16,8 @@ class HelpCommand(Cog, name="help_command"):
     async def on_ready(self):
         await self._bot.wait_until_ready()
     
-    @nextcord.slash_command(description=f"View a list of all commands", guild_ids=[948991434827128863, 1316042324727300109])
-    async def testhelp(self, interaction : Interaction):
+    @nextcord.slash_command(description=f"View a list of all commands", guild_ids=[])
+    async def help(self, interaction : Interaction):
         if interaction.user is None: return
         await interaction.response.defer(ephemeral=True)
 

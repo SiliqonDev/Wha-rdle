@@ -20,8 +20,8 @@ class LeaderboardCommand(Cog, name="leaderboard_command"):
         await self._bot.wait_until_ready()
         self._game_service = cast(GameService, self._bot.get_cog("game_service"))
     
-    @nextcord.slash_command(description=f"View a leaderboard of everyone's stats", guild_ids=[948991434827128863, 1316042324727300109])
-    async def testleaderboard(self, interaction : Interaction):
+    @nextcord.slash_command(description=f"View a leaderboard of everyone's stats", guild_ids=[])
+    async def leaderboard(self, interaction : Interaction):
         await interaction.response.defer()
 
         sorted_players : list[tuple[int, PlayerStats]] = await self._game_service.getUsersSortedByStats()
